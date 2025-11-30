@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register - Saintek Buzz</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/8.10.1/firebase-app.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/8.10.1/firebase-auth.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/8.10.1/firebase-firestore.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .loading-spinner {
+            display: none;
+        }
+        .loading .loading-spinner {
+            display: inline-block;
+        }
+        .loading .btn-text {
+            display: none;
+        }
+        .password-strength {
+            height: 4px;
+            transition: all 0.3s ease;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center py-8">
+    <div class="bg-white rounded-xl shadow-sm p-8 w-full max-w-md">
+        <div class="text-center mb-8">
+            <div class="flex justify-center items-center space-x-2 mb-4">
+                <i class="fas fa-bolt text-blue-500 text-3xl"></i>
+                <h1 class="text-2xl font-bold text-gray-800">Saintek Buzz</h1>
+            </div>
+            <p class="text-gray-600">Buat akun baru</p>
+        </div>
+
+        <form id="register-form">
+            <div class="mb-4">
+                <label for="email" class="block text-gray-700 text-sm font-medium mb-2">Email</label>
+                <input 
+                    type="email" 
+                    id="email" 
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200"
+                    placeholder="email@example.com"
+                    required
+                    autocomplete="email"
+                >
+            </div>
+
+            <div class="mb-4">
+                <label for="username" class="block text-gray-700 text-sm font-medium mb-2">Username</label>
+                <input 
+                    type="text" 
+                    id="username" 
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200"
+                    placeholder="Pilih username"
+                    required
+                    autocomplete="username"
+                    minlength="3"
+                    maxlength="20"
+                >
+                <div class="text-xs text-gray-500 mt-1">Minimal 3 karakter, maksimal 20 karakter</div>
+            </div>
+
+            <div class="mb-4">
+                <label for="jurusan" class="block text-gray-700 text-sm font-medium mb-2">Jurusan</label>
+                <select 
+                    id="jurusan" 
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200"
+                    required
+                >
+                    <option value="">Pilih Jurusan</option>
+                    <option value="Fisika">Fisika</option>
+                    <option value="Kimia">Kimia</option>
+                    <option value="Biologi">Biologi</option>
+                    <option value="Matematika">Matematika</option>
+                    <option value="Teknik Elektro">Teknik Elektro</option>
+                    <option value="Teknik Informatika">Teknik Informatika</option>
+                    <option value="Teknik Lingkungan">Teknik Lingkungan</option>
+                </select>
+            </div>
+
+            <div class="mb-4">
+                <label for="angkatan" class="block text-gray-700 text-sm font-medium mb-2">Angkatan</label>
+                <input 
+                    type="number" 
+                    id="angkatan" 
+                    min="2010" 
+                    max="2030" 
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200"
+                    placeholder="Tahun angkatan"
+                    required
+                >
+            </div>
+
+            <div class="mb-6">
+                <label for="password" class="block text-gray-700 text-sm font-medium mb-2">Password</label>
+                <input 
+                    type="password" 
+                    id="password" 
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200"
+                    placeholder="Buat password"
+                    required
+                    autocomplete="new-password"
+                    minlength="6"
+                >
+                <div class="text-xs text-gray-500 mt-1">Minimal 6 karakter</div>
+                
+                <!-- Password strength indicator -->
+                <div class="mt-2">
+                    <div class="flex space-x-1">
+                        <div id="password-strength-1" class="password-strength flex-1 bg-gray-200 rounded"></div>
+                        <div id="password-strength-2" class="password-strength flex-1 bg-gray-200 rounded"></div>
+                        <div id="password-strength-3" class="password-strength flex-1 bg-gray-200 rounded"></div>
+                        <div id="password-strength-4" class="password-strength flex-1 bg-gray-200 rounded"></div>
+                    </div>
+                </div>
+            </div>
+
+            <button 
+                type="submit" 
+                id="register-button"
+                class="w-full bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-lg transition duration-200 flex items-center justify-center"
+            >
+                <span class="btn-text">Daftar</span>
+                <i class="fas fa-spinner fa-spin loading-spinner"></i>
+            </button>
+        </form>
+
+        <div class="text-center mt-6">
+            <p class="text-gray-600">
+                Sudah punya akun? 
+                <a href="login.html" class="text-blue-500 hover:text-blue-600 font-medium transition duration-200">Login di sini</a>
+            </p>
+        </div>
+
+        <div id="error-message" class="mt-4 p-3 bg-red-100 text-red-700 rounded-lg hidden"></div>
+        <div id="success-message" class="mt-4 p-3 bg-green-100 text-green-700 rounded-lg hidden"></div>
+    </div>
+
+    <script src="js/firebase.js"></script>
+    <script>
+        class RegisterManager {
+            constructor() {
+                this.form = document.getElementById('register-form');
+                this.emailInput = document.getElementById('email');
+                this.usernameInput = document.getElementById('username');
+                this.jurusanInput = document.getElementById('jurusan');
+                this.angkatanInput = document.getElementById('angkatan');
+                this.passwordInput = document.getElementById('password');
+                this.registerButton = document.getElementById('register-button');
+                this.errorMessage = document.getElementById('error-message');
+                this.successMessage = document.getElementById('success-message');
+                
+                this.init();
+            }
+
+            init() {
+                this.setupEventListeners();
+                this.setCurrentYear();
+            }
+
+            setupEventListeners() {
+                if (this.form) {
+                    this.form.addEventListener('submit', (e) => {
+                        e.preventDefault();
+                        this.handleRegister();
+                    });
+                }
+
+                // Password strength indicator
+                if (this.passwordInput) {
+                    this.passwordInput.addEventListener('input', () => {
+                        this.updatePasswordStrength();
+                    });
+                }
+
+                // Clear errors when user starts typing
+                const inputs = [this.emailInput, this.usernameInput, this.jurusanInput, this.angkatanInput, this.passwordInput];
+                inputs.forEach(input => {
+                    if (input) {
+                        input.addEventListener('input', () => {
+                            this.hideError();
+                        });
+                    }
+                });
+            }
+
+            setCurrentYear() {
+                // Set current year as default for angkatan
+                if (this.angkatanInput) {
+                    const currentYear = new Date().getFullYear();
+                    this.angkatanInput.value = currentYear;
+                }
+            }
+
+            async handleRegister() {
+                const email = this.emailInput.value.trim();
+                const username = this.usernameInput.value.trim();
+                const jurusan = this.jurusanInput.value;
+                const angkatan = this.angkatanInput.value;
+                const password = this.passwordInput.value;
+
+                // Validation
+                if (!this.validateForm(email, username, jurusan, angkatan, password)) {
+                    return;
+                }
+
+                try {
+                    this.setLoading(true);
+                    this.hideError();
+                    this.hideSuccess();
+
+                    // Create user in Firebase Auth
+                    const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+                    
+                    // Update profile with username
+                    await userCredential.user.updateProfile({
+                        displayName: username
+                    });
+
+                    // Save additional data to Firestore
+                    await db.collection('users').doc(userCredential.user.uid).set({
+                        username: username,
+                        email: email,
+                        jurusan: jurusan,
+                        angkatan: angkatan,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                        lastLogin: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+
+                    // Registration successful
+                    this.showSuccess('Akun berhasil dibuat! Mengarahkan ke halaman login...');
+                    
+                    // Redirect to login page after 2 seconds
+                    setTimeout(() => {
+                        window.location.href = 'login.html';
+                    }, 2000);
+
+                } catch (error) {
+                    this.handleRegisterError(error);
+                } finally {
+                    this.setLoading(false);
+                }
+            }
+
+            validateForm(email, username, jurusan, angkatan, password) {
+                // Email validation
+                if (!email || !username || !jurusan || !angkatan || !password) {
+                    this.showError('Semua field harus diisi');
+                    return false;
+                }
+
+                if (!this.isValidEmail(email)) {
+                    this.showError('Format email tidak valid');
+                    return false;
+                }
+
+                // Username validation
+                if (username.length < 3) {
+                    this.showError('Username minimal 3 karakter');
+                    return false;
+                }
+
+                if (username.length > 20) {
+                    this.showError('Username maksimal 20 karakter');
+                    return false;
+                }
+
+                // Jurusan validation
+                if (!jurusan) {
+                    this.showError('Pilih jurusan');
+                    return false;
+                }
+
+                // Angkatan validation
+                const currentYear = new Date().getFullYear();
+                if (angkatan < 2010 || angkatan > currentYear + 5) {
+                    this.showError(`Tahun angkatan harus antara 2010 dan ${currentYear + 5}`);
+                    return false;
+                }
+
+                // Password validation
+                if (password.length < 6) {
+                    this.showError('Password minimal 6 karakter');
+                    return false;
+                }
+
+                return true;
+            }
+
+            isValidEmail(email) {
+                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                return emailRegex.test(email);
+            }
+
+            updatePasswordStrength() {
+                const password = this.passwordInput.value;
+                const strengthBars = [
+                    document.getElementById('password-strength-1'),
+                    document.getElementById('password-strength-2'),
+                    document.getElementById('password-strength-3'),
+                    document.getElementById('password-strength-4')
+                ];
+
+                // Reset all bars
+                strengthBars.forEach(bar => {
+                    bar.className = 'password-strength flex-1 bg-gray-200 rounded';
+                });
+
+                if (password.length === 0) return;
+
+                let strength = 0;
+
+                // Length check
+                if (password.length >= 6) strength++;
+                if (password.length >= 8) strength++;
+
+                // Complexity checks
+                if (/[A-Z]/.test(password)) strength++;
+                if (/[0-9]/.test(password)) strength++;
+                if (/[^A-Za-z0-9]/.test(password)) strength++;
+
+                // Cap at 4
+                strength = Math.min(strength, 4);
+
+                // Update bars
+                for (let i = 0; i < strength; i++) {
+                    let colorClass = 'bg-red-500';
+                    if (strength >= 3) colorClass = 'bg-green-500';
+                    else if (strength >= 2) colorClass = 'bg-yellow-500';
+                    
+                    strengthBars[i].className = `password-strength flex-1 ${colorClass} rounded`;
+                }
+            }
+
+            handleRegisterError(error) {
+                console.error('Registration error:', error);
+                
+                let errorMessage = 'Terjadi kesalahan saat mendaftar';
+                
+                switch (error.code) {
+                    case 'auth/email-already-in-use':
+                        errorMessage = 'Email sudah digunakan';
+                        break;
+                    case 'auth/invalid-email':
+                        errorMessage = 'Format email tidak valid';
+                        break;
+                    case 'auth/operation-not-allowed':
+                        errorMessage = 'Operasi tidak diizinkan';
+                        break;
+                    case 'auth/weak-password':
+                        errorMessage = 'Password terlalu lemah';
+                        break;
+                    default:
+                        errorMessage = error.message;
+                }
+                
+                this.showError(errorMessage);
+            }
+
+            setLoading(loading) {
+                if (this.registerButton) {
+                    if (loading) {
+                        this.registerButton.classList.add('loading');
+                        this.registerButton.disabled = true;
+                    } else {
+                        this.registerButton.classList.remove('loading');
+                        this.registerButton.disabled = false;
+                    }
+                }
+            }
+
+            showError(message) {
+                if (this.errorMessage) {
+                    this.errorMessage.textContent = message;
+                    this.errorMessage.classList.remove('hidden');
+                    this.hideSuccess();
+                }
+            }
+
+            showSuccess(message) {
+                if (this.successMessage) {
+                    this.successMessage.textContent = message;
+                    this.successMessage.classList.remove('hidden');
+                    this.hideError();
+                }
+            }
+
+            hideError() {
+                if (this.errorMessage) {
+                    this.errorMessage.classList.add('hidden');
+                }
+            }
+
+            hideSuccess() {
+                if (this.successMessage) {
+                    this.successMessage.classList.add('hidden');
+                }
+            }
+        }
+
+        // Initialize register manager when DOM is loaded
+        document.addEventListener('DOMContentLoaded', () => {
+            new RegisterManager();
+        });
+    </script>
+</body>
+</html>

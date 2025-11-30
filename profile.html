@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profil - Saintek Buzz</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/8.10.1/firebase-app.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/8.10.1/firebase-auth.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/8.10.1/firebase-firestore.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .avatar-gradient {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .stat-card {
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+        .post-item {
+            transition: transform 0.2s ease;
+        }
+        .post-item:hover {
+            transform: translateX(4px);
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <!-- Header -->
+    <header class="bg-white shadow-sm sticky top-0 z-10">
+        <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+            <div class="flex items-center space-x-2">
+                <a href="index.html" class="flex items-center space-x-2 hover:opacity-80 transition duration-200">
+                    <i class="fas fa-bolt text-blue-500 text-2xl"></i>
+                    <h1 class="text-xl font-bold text-gray-800">Saintek Buzz</h1>
+                </a>
+            </div>
+            
+            <nav class="hidden md:flex space-x-6">
+                <a href="index.html" class="text-gray-700 hover:text-blue-500 font-medium transition duration-200">Beranda</a>
+                <a href="#" class="text-blue-500 font-medium">Profil</a>
+            </nav>
+            
+            <div class="flex items-center space-x-4">
+                <button id="logout-btn" class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded-full text-sm font-medium transition duration-200">
+                    <i class="fas fa-sign-out-alt mr-2"></i>Logout
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-4 py-6">
+        <div class="max-w-2xl mx-auto">
+            <!-- Profile Info -->
+            <div class="bg-white rounded-xl shadow-sm p-6 mb-6">
+                <div class="flex flex-col items-center text-center mb-6">
+                    <div class="w-24 h-24 avatar-gradient rounded-full flex items-center justify-center text-white text-3xl font-bold mb-4 shadow-lg">
+                        <span id="profile-initial">U</span>
+                    </div>
+                    <h2 id="profile-name" class="text-2xl font-bold text-gray-800 mb-2">Username</h2>
+                    <p id="profile-details" class="text-gray-600">Jurusan • Angkatan</p>
+                    <p id="profile-email" class="text-gray-500 text-sm mt-1"></p>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-4 text-center">
+                    <div class="stat-card bg-gray-50 rounded-lg p-4 border border-gray-100">
+                        <div id="post-count" class="text-2xl font-bold text-gray-800">0</div>
+                        <div class="text-gray-600 text-sm">Posts</div>
+                    </div>
+                    <div class="stat-card bg-gray-50 rounded-lg p-4 border border-gray-100">
+                        <div id="like-count" class="text-2xl font-bold text-gray-800">0</div>
+                        <div class="text-gray-600 text-sm">Likes</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- User Posts -->
+            <div>
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-xl font-bold text-gray-800">Posts Saya</h3>
+                    <div class="flex items-center space-x-2 text-sm text-gray-500">
+                        <i class="fas fa-sort"></i>
+                        <span>Terbaru</span>
+                    </div>
+                </div>
+                <div id="user-posts-container">
+                    <!-- User posts will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="fixed inset-0 bg-white bg-opacity-80 flex items-center justify-center z-50 hidden">
+        <div class="text-center">
+            <i class="fas fa-spinner fa-spin text-blue-500 text-3xl mb-2"></i>
+            <p class="text-gray-600">Memuat...</p>
+        </div>
+    </div>
+
+    <script src="js/firebase.js"></script>
+    <script src="js/profile.js"></script>
+</body>
+</html>

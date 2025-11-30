@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Saintek Buzz</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/8.10.1/firebase-app.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/8.10.1/firebase-auth.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/8.10.1/firebase-firestore.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .filter-hashtag {
+            transition: all 0.2s ease-in-out;
+        }
+        
+        .filter-hashtag:hover {
+            transform: translateX(4px);
+        }
+        
+        .filter-hashtag.active {
+            background-color: #dbeafe;
+            border: 1px solid #bfdbfe;
+        }
+        
+        /* Ikon untuk semua post */
+        .fa-layer-group {
+            opacity: 0.7;
+        }
+
+        .post-item {
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .post-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .avatar-gradient {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        /* Custom scrollbar */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 10px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #a8a8a8;
+        }
+
+        /* Smooth transitions */
+        .smooth-transition {
+            transition: all 0.3s ease;
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <!-- Header -->
+    <header class="bg-white shadow-sm sticky top-0 z-10 smooth-transition">
+        <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+            <div class="flex items-center space-x-2">
+                <i class="fas fa-bolt text-blue-500 text-2xl"></i>
+                <h1 class="text-xl font-bold text-gray-800">Saintek Buzz</h1>
+            </div>
+            
+            <nav class="hidden md:flex space-x-6">
+                <a href="#" class="text-gray-700 hover:text-blue-500 font-medium smooth-transition">Beranda</a>
+                <a href="#" class="text-gray-700 hover:text-blue-500 font-medium smooth-transition" id="profile-link">Profil</a>
+            </nav>
+            
+            <div class="flex items-center space-x-4">
+                <button id="logout-btn" class="hidden bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded-full text-sm font-medium smooth-transition">
+                    <i class="fas fa-sign-out-alt mr-2"></i>Logout
+                </button>
+                <button id="login-btn" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-full text-sm font-medium smooth-transition">
+                    <i class="fas fa-sign-in-alt mr-2"></i>Login
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-4 py-6">
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+            <!-- Sidebar Kiri - Filter Hashtag -->
+            <div class="lg:col-span-1 hidden lg:block">
+                <div class="bg-white rounded-xl shadow-sm p-4 sticky top-20 smooth-transition">
+                    <h2 class="font-bold text-lg mb-4 text-gray-800 flex items-center">
+                        <i class="fas fa-filter text-blue-500 mr-2"></i>
+                        Filter Post
+                    </h2>
+                    <div class="space-y-3 custom-scrollbar" style="max-height: 400px; overflow-y: auto;">
+                        <!-- Filter Semua Post (Default) -->
+                        <div class="flex justify-between items-center hover:bg-gray-50 p-2 rounded-lg cursor-pointer filter-hashtag active mx-2" data-hashtag="all">
+                            <span class="text-blue-500 font-medium flex items-center">
+                                <i class="fas fa-layer-group mr-2"></i>
+                                Semua Post
+                            </span>
+                            <span id="all-posts-count" class="text-gray-500 text-sm">0 posts</span>
+                        </div>
+                        <div class="border-t border-gray-100 my-2"></div>
+                        
+                        <!-- Popular Hashtags -->
+                        <div class="text-xs text-gray-500 uppercase font-semibold mb-2">Hashtag</div>
+                        
+                        <div class="flex justify-between items-center hover:bg-gray-50 p-2 rounded-lg cursor-pointer filter-hashtag mx-2" data-hashtag="Event">
+                            <span class="text-blue-500 font-medium">#Event</span>
+                            <span class="text-gray-500 text-sm">0 posts</span>
+                        </div>
+                        <div class="flex justify-between items-center hover:bg-gray-50 p-2 rounded-lg cursor-pointer filter-hashtag mx-2" data-hashtag="Kolaborasi">
+                            <span class="text-blue-500 font-medium">#Kolaborasi</span>
+                            <span class="text-gray-500 text-sm">0 posts</span>
+                        </div>
+                        <div class="flex justify-between items-center hover:bg-gray-50 p-2 rounded-lg cursor-pointer filter-hashtag mx-2" data-hashtag="Informasi">
+                            <span class="text-blue-500 font-medium">#Informasi</span>
+                            <span class="text-gray-500 text-sm">0 posts</span>
+                        </div>
+                        <div class="flex justify-between items-center hover:bg-gray-50 p-2 rounded-lg cursor-pointer filter-hashtag mx-2" data-hashtag="Kocak">
+                            <span class="text-blue-500 font-medium">#Kocak</span>
+                            <span class="text-gray-500 text-sm">0 posts</span>
+                        </div>
+                        <div class="flex justify-between items-center hover:bg-gray-50 p-2 rounded-lg cursor-pointer filter-hashtag mx-2" data-hashtag="Magang">
+                            <span class="text-blue-500 font-medium">#Magang</span>
+                            <span class="text-gray-500 text-sm">0 posts</span>
+                        </div>
+                        <div class="flex justify-between items-center hover:bg-gray-50 p-2 rounded-lg cursor-pointer filter-hashtag mx-2" data-hashtag="Beasiswa">
+                            <span class="text-blue-500 font-medium">#Beasiswa</span>
+                            <span class="text-gray-500 text-sm">0 posts</span>
+                        </div>
+                        <div class="flex justify-between items-center hover:bg-gray-50 p-2 rounded-lg cursor-pointer filter-hashtag mx-2" data-hashtag="Kuliah">
+                            <span class="text-blue-500 font-medium">#Kuliah</span>
+                            <span class="text-gray-500 text-sm">0 posts</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Tombol Reset Filter -->
+                    <button id="reset-filter" class="w-full mt-4 bg-gray-100 hover:bg-gray-200 text-gray-800 py-2 px-4 rounded-lg text-sm font-medium smooth-transition hidden">
+                        <i class="fas fa-times mr-2"></i>Reset Filter
+                    </button>
+
+                </div>
+            </div>
+
+            <!-- Konten Utama -->
+            <div class="lg:col-span-2">
+                <!-- Form Buat Post -->
+                <div class="bg-white rounded-xl shadow-sm p-4 mb-6 smooth-transition" id="post-form-container">
+                    <div class="flex space-x-3">
+                        <div class="flex-shrink-0">
+                            <div class="w-10 h-10 avatar-gradient rounded-full flex items-center justify-center text-white font-bold shadow-md" id="user-avatar">
+                                <i class="fas fa-user"></i>
+                            </div>
+                        </div>
+                        <div class="flex-grow">
+                            <textarea 
+                                id="post-content" 
+                                placeholder="What's Buzzing?" 
+                                class="w-full border-0 focus:ring-0 resize-none text-gray-800 placeholder-gray-500 smooth-transition"
+                                rows="3"
+                                maxlength="280"
+                            ></textarea>
+                            <div class="flex justify-between items-center mt-3">
+                                <div class="flex space-x-4 text-blue-500">
+                                    <div class="flex items-center space-x-2">
+                                        <input type="checkbox" id="anonymous" class="rounded focus:ring-blue-500">
+                                        <label for="anonymous" class="text-sm text-gray-700 cursor-pointer">Posting sebagai anonim</label>
+                                    </div>
+                                </div>
+                                <div class="flex items-center space-x-3">
+                                    <span id="char-count" class="text-sm text-gray-500">0/280</span>
+                                    <button id="post-btn" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-full text-sm font-medium smooth-transition shadow-md">
+                                        <i class="fas fa-paper-plane mr-2"></i>Post
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Hashtag Suggestions -->
+                <div id="hashtag-suggestions" class="bg-blue-50 rounded-lg p-3 mb-4 hidden">
+                    <h4 class="text-sm font-semibold text-blue-800 mb-2">Saran Hashtag Populer:</h4>
+                    <div class="flex flex-wrap gap-2">
+                        <button class="text-blue-600 hover:text-blue-800 text-sm bg-white px-2 py-1 rounded-full border border-blue-200 smooth-transition hashtag-suggestion" data-hashtag="Event">#Event</button>
+                        <button class="text-blue-600 hover:text-blue-800 text-sm bg-white px-2 py-1 rounded-full border border-blue-200 smooth-transition hashtag-suggestion" data-hashtag="Informasi">#Informasi</button>
+                        <button class="text-blue-600 hover:text-blue-800 text-sm bg-white px-2 py-1 rounded-full border border-blue-200 smooth-transition hashtag-suggestion" data-hashtag="Kuliah">#Kuliah</button>
+                        <button class="text-blue-600 hover:text-blue-800 text-sm bg-white px-2 py-1 rounded-full border border-blue-200 smooth-transition hashtag-suggestion" data-hashtag="Kocak">#Kocak</button>
+                    </div>
+                </div>
+
+                <!-- Daftar Post -->
+                <div id="posts-container">
+                    <!-- Post akan dimuat di sini -->
+                </div>
+
+                <!-- Load More Button -->
+                <div id="load-more-container" class="text-center mt-6 hidden">
+                    <button id="load-more-btn" class="bg-white hover:bg-gray-50 text-gray-700 px-6 py-2 rounded-lg border border-gray-300 smooth-transition">
+                        <i class="fas fa-redo mr-2"></i>Muat Lebih Banyak
+                    </button>
+                </div>
+            </div>
+
+            <!-- Sidebar Kanan - Trending & Stats -->
+            <div class="lg:col-span-1 hidden lg:block">
+                    
+                    <!-- Trending Hashtags -->
+
+                    <!-- Quick Tips -->
+                    <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                        <h3 class="text-sm font-semibold text-yellow-800 mb-2 flex items-center">
+                            <i class="fas fa-lightbulb text-yellow-500 mr-2"></i>
+                            Tips
+                        </h3>
+                        <p class="text-xs text-yellow-700">
+                            Gunakan hashtag yang relevan untuk memudahkan orang menemukan post Anda. Contoh: #Event, #Informasi, #Kuliah
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal untuk komentar -->
+    <div id="comment-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden smooth-transition">
+        <div class="bg-white rounded-xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto smooth-transition">
+            <div class="p-4 border-b flex justify-between items-center bg-white sticky top-0 z-10">
+                <h3 class="font-bold text-lg text-gray-800">Komentar</h3>
+                <button id="close-comment-modal" class="text-gray-500 hover:text-gray-700 smooth-transition">
+                    <i class="fas fa-times text-lg"></i>
+                </button>
+            </div>
+            <div class="p-4" id="comment-modal-content">
+                <!-- Konten modal akan diisi dengan JavaScript -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Toast -->
+    <div id="notification-toast" class="fixed top-4 right-4 p-4 rounded-lg shadow-lg z-50 hidden smooth-transition">
+        <div class="flex items-center space-x-3">
+            <i id="toast-icon" class="text-lg"></i>
+            <span id="toast-message" class="text-sm font-medium"></span>
+        </div>
+    </div>
+
+    <script src="js/firebase.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>

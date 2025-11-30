@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Saintek Buzz</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/8.10.1/firebase-app.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/8.10.1/firebase-auth.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .loading-spinner {
+            display: none;
+        }
+        .loading .loading-spinner {
+            display: inline-block;
+        }
+        .loading .btn-text {
+            display: none;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center">
+    <div class="bg-white rounded-xl shadow-sm p-8 w-full max-w-md">
+        <div class="text-center mb-8">
+            <div class="flex justify-center items-center space-x-2 mb-4">
+                <i class="fas fa-bolt text-blue-500 text-3xl"></i>
+                <h1 class="text-2xl font-bold text-gray-800">Saintek Buzz</h1>
+            </div>
+            <p class="text-gray-600">Login ke akun Anda</p>
+        </div>
+
+        <form id="login-form">
+            <div class="mb-4">
+                <label for="email" class="block text-gray-700 text-sm font-medium mb-2">Email</label>
+                <input 
+                    type="email" 
+                    id="email" 
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200"
+                    placeholder="email@example.com"
+                    required
+                    autocomplete="email"
+                >
+            </div>
+
+            <div class="mb-6">
+                <label for="password" class="block text-gray-700 text-sm font-medium mb-2">Password</label>
+                <input 
+                    type="password" 
+                    id="password" 
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200"
+                    placeholder="Masukkan password"
+                    required
+                    autocomplete="current-password"
+                >
+            </div>
+
+            <button 
+                type="submit" 
+                id="login-button"
+                class="w-full bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-lg transition duration-200 flex items-center justify-center"
+            >
+                <span class="btn-text">Login</span>
+                <i class="fas fa-spinner fa-spin loading-spinner"></i>
+            </button>
+        </form>
+
+        <div class="text-center mt-6">
+            <p class="text-gray-600">
+                Belum punya akun? 
+                <a href="register.html" class="text-blue-500 hover:text-blue-600 font-medium transition duration-200">Daftar di sini</a>
+            </p>
+        </div>
+
+        <div id="error-message" class="mt-4 p-3 bg-red-100 text-red-700 rounded-lg hidden"></div>
+    </div>
+
+    <script src="js/firebase.js"></script>
+    <script>
+        class LoginManager {
+            constructor() {
+                this.form = document.getElementById('login-form');
+                this.emailInput = document.getElementById('email');
+                this.passwordInput = document.getElementById('password');
+                this.loginButton = document.getElementById('login-button');
+                this.errorMessage = document.getElementById('error-message');
+                
+                this.init();
+            }
+
+            init() {
+                this.setupEventListeners();
+                this.checkRedirect();
+            }
+
+            setupEventListeners() {
+                if (this.form) {
+                    this.form.addEventListener('submit', (e) => {
+                        e.preventDefault();
+                        this.handleLogin();
+                    });
+                }
+
+                // Clear error when user starts typing
+                [this.emailInput, this.passwordInput].forEach(input => {
+                    if (input) {
+                        input.addEventListener('input', () => {
+                            this.hideError();
+                        });
+                    }
+                });
+            }
+
+            checkRedirect() {
+                // Check if user is already logged in
+                auth.onAuthStateChanged((user) => {
+                    if (user) {
+                        window.location.href = 'index.html';
+                    }
+                });
+            }
+
+            async handleLogin() {
+                const email = this.emailInput.value.trim();
+                const password = this.passwordInput.value;
+
+                // Validation
+                if (!this.validateForm(email, password)) {
+                    return;
+                }
+
+                try {
+                    this.setLoading(true);
+                    this.hideError();
+
+                    const userCredential = await auth.signInWithEmailAndPassword(email, password);
+                    
+                    // Login successful
+                    this.showSuccess('Login berhasil! Mengarahkan...');
+                    
+                    // Small delay to show success message
+                    setTimeout(() => {
+                        window.location.href = 'index.html';
+                    }, 1000);
+
+                } catch (error) {
+                    this.handleLoginError(error);
+                } finally {
+                    this.setLoading(false);
+                }
+            }
+
+            validateForm(email, password) {
+                if (!email || !password) {
+                    this.showError('Email dan password harus diisi');
+                    return false;
+                }
+
+                if (!this.isValidEmail(email)) {
+                    this.showError('Format email tidak valid');
+                    return false;
+                }
+
+                return true;
+            }
+
+            isValidEmail(email) {
+                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                return emailRegex.test(email);
+            }
+
+            handleLoginError(error) {
+                console.error('Login error:', error);
+                
+                let errorMessage = 'Terjadi kesalahan saat login';
+                
+                switch (error.code) {
+                    case 'auth/invalid-email':
+                        errorMessage = 'Format email tidak valid';
+                        break;
+                    case 'auth/user-disabled':
+                        errorMessage = 'Akun ini telah dinonaktifkan';
+                        break;
+                    case 'auth/user-not-found':
+                        errorMessage = 'Akun tidak ditemukan';
+                        break;
+                    case 'auth/wrong-password':
+                        errorMessage = 'Password salah';
+                        break;
+                    case 'auth/too-many-requests':
+                        errorMessage = 'Terlalu banyak percobaan login. Coba lagi nanti';
+                        break;
+                    default:
+                        errorMessage = error.message;
+                }
+                
+                this.showError(errorMessage);
+            }
+
+            setLoading(loading) {
+                if (this.loginButton) {
+                    if (loading) {
+                        this.loginButton.classList.add('loading');
+                        this.loginButton.disabled = true;
+                    } else {
+                        this.loginButton.classList.remove('loading');
+                        this.loginButton.disabled = false;
+                    }
+                }
+            }
+
+            showError(message) {
+                if (this.errorMessage) {
+                    this.errorMessage.textContent = message;
+                    this.errorMessage.classList.remove('hidden');
+                }
+            }
+
+            showSuccess(message) {
+                // You can implement a success message display here
+                console.log(message);
+            }
+
+            hideError() {
+                if (this.errorMessage) {
+                    this.errorMessage.classList.add('hidden');
+                }
+            }
+        }
+
+        // Initialize login manager when DOM is loaded
+        document.addEventListener('DOMContentLoaded', () => {
+            new LoginManager();
+        });
+    </script>
+</body>
+</html>
