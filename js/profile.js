@@ -21,6 +21,10 @@ class ProfileManager {
     try {
       await this.loadProfileData(user);
       await this.loadUserPosts(user.uid);
+      
+      // Update sidebar info
+      this.updateSidebarInfo(user);
+      
     } catch (error) {
       console.error('Error handling authenticated user:', error);
       this.showError('Terjadi kesalahan saat memuat data profil');
@@ -51,6 +55,10 @@ class ProfileManager {
   updateProfileBasicInfo(user) {
     const initialElement = document.getElementById('profile-initial');
     const nameElement = document.getElementById('profile-name');
+    const headerNameElement = document.getElementById('profile-header-name');
+    const emailElement = document.getElementById('profile-email');
+    const sidebarNameElement = document.getElementById('profile-sidebar-name');
+    const sidebarEmailElement = document.getElementById('profile-sidebar-email');
 
     if (initialElement) {
       initialElement.textContent = user.displayName ? user.displayName.charAt(0).toUpperCase() : 'U';
@@ -58,6 +66,46 @@ class ProfileManager {
 
     if (nameElement) {
       nameElement.textContent = user.displayName || 'User';
+    }
+
+    if (headerNameElement) {
+      headerNameElement.textContent = user.displayName || 'User';
+    }
+
+    if (emailElement && user.email) {
+      emailElement.textContent = `@${user.email.split('@')[0]}`;
+    }
+
+    if (sidebarNameElement && user.displayName) {
+      sidebarNameElement.textContent = user.displayName;
+    }
+
+    if (sidebarEmailElement && user.email) {
+      sidebarEmailElement.textContent = `@${user.email.split('@')[0]}`;
+    }
+
+    // Update avatar in sidebar
+    const userAvatar = document.getElementById('user-avatar');
+    if (userAvatar && user.displayName) {
+      userAvatar.textContent = user.displayName.charAt(0).toUpperCase();
+    }
+  }
+
+  updateSidebarInfo(user) {
+    const sidebarName = document.getElementById('profile-sidebar-name');
+    const sidebarEmail = document.getElementById('profile-sidebar-email');
+    const userAvatar = document.getElementById('user-avatar');
+
+    if (sidebarName && user.displayName) {
+      sidebarName.textContent = user.displayName;
+    }
+
+    if (sidebarEmail && user.email) {
+      sidebarEmail.textContent = `@${user.email.split('@')[0]}`;
+    }
+
+    if (userAvatar && user.displayName) {
+      userAvatar.textContent = user.displayName.charAt(0).toUpperCase();
     }
   }
 
@@ -102,6 +150,12 @@ class ProfileManager {
 
       this.updateStats(postCount, totalLikes);
 
+      // Update post count in header
+      const postCountHeader = document.getElementById('post-count-header');
+      if (postCountHeader) {
+        postCountHeader.textContent = `${postCount} posts`;
+      }
+
     } catch (error) {
       console.error('Error loading user posts:', error);
       this.showError(postsContainer, 'Terjadi kesalahan saat memuat posts');
@@ -110,7 +164,7 @@ class ProfileManager {
 
   createUserPostElement(post, postId) {
     const postElement = document.createElement('div');
-    postElement.className = 'bg-white rounded-xl shadow-sm p-4 mb-4 post-item';
+    postElement.className = 'post-item px-6 py-4 hover:bg-gray-50';
     
     const timeAgo = this.formatTimeAgo(post.createdAt);
     const jurusanHtml = post.authorJurusan 
@@ -118,7 +172,7 @@ class ProfileManager {
       : '';
     
     const hashtagsHtml = post.hashtags.map(tag => 
-      `<span class="text-blue-500 hover:underline cursor-pointer">#${tag}</span>`
+      `<span class="text-green-700 border rounded-full px-2 bg-green-100 border-green-200 hover:underline cursor-pointer">#${tag}</span>`
     ).join(' ');
     
     const likeCount = post.likes ? post.likes.length : 0;
@@ -140,7 +194,7 @@ class ProfileManager {
         <div class="mb-3 flex flex-wrap gap-1">${hashtagsHtml}</div>
       ` : ''}
       
-      <div class="flex space-x-4 text-gray-500 text-sm">
+      <div class="flex space-x-6 text-gray-500 text-sm">
         <div class="flex items-center space-x-1">
           <i class="far fa-heart"></i>
           <span>${likeCount}</span>
@@ -196,7 +250,7 @@ class ProfileManager {
   }
 
   formatPostContent(content) {
-    return content.replace(/#(\w+)/g, '<span class="text-blue-500">#$1</span>');
+    return content.replace(/#(\w+)/g, '<span class="text-green-700">#$1</span>');
   }
 
   formatTimeAgo(timestamp) {
@@ -249,13 +303,19 @@ class ProfileManager {
 
   showLoading(container) {
     if (container) {
-      container.innerHTML = '<div class="text-center py-8"><i class="fas fa-spinner fa-spin text-blue-500 text-2xl"></i></div>';
+      container.innerHTML = '<div class="text-center py-8"><i class="fas fa-spinner fa-spin text-green-500 text-2xl"></i></div>';
     }
   }
 
   showNoPosts(container) {
     if (container) {
-      container.innerHTML = '<p class="text-center text-gray-500 py-8">Belum ada posts.</p>';
+      container.innerHTML = `
+        <div class="text-center py-12">
+          <i class="fas fa-feather text-gray-300 text-4xl mb-3"></i>
+          <p class="text-gray-500">Belum ada posts</p>
+          <p class="text-gray-400 text-sm mt-2">Buat post pertama Anda!</p>
+        </div>
+      `;
     }
   }
 
@@ -275,7 +335,7 @@ class ProfileManager {
     messageElement.className = `fixed top-4 right-4 p-4 rounded-lg shadow-lg z-50 ${
       type === 'success' ? 'bg-green-500 text-white' :
       type === 'error' ? 'bg-red-500 text-white' :
-      'bg-blue-500 text-white'
+      'bg-green-700 text-white'
     }`;
     messageElement.innerHTML = `
       <div class="flex items-center space-x-2">

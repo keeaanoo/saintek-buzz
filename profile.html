@@ -10,80 +10,157 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/8.10.1/firebase-firestore.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        .avatar-gradient {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        .sidebar-item {
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            margin: 4px 0;
+            border-radius: 9999px;
+            transition: background-color 0.2s ease;
         }
-        .stat-card {
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        .sidebar-item:hover {
+            background-color: rgba(29, 240, 82, 0.1);
         }
-        .stat-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        .sidebar-item.active {
+            font-weight: bold;
+        }
+        .sidebar-item i {
+            width: 24px;
+            margin-right: 16px;
+            text-align: center;
         }
         .post-item {
-            transition: transform 0.2s ease;
+            border-bottom: 1px solid #eff3f4;
+            border-radius: 0;
+            transition: background-color 0.2s ease;
         }
         .post-item:hover {
-            transform: translateX(4px);
+            background-color: #f7f9f9;
+        }
+        .x-button {
+            background-color: #1d9bf0;
+            color: white;
+            border-radius: 9999px;
+            font-weight: bold;
+            padding: 12px 24px;
+            transition: background-color 0.2s ease;
+        }
+        .x-button:hover {
+            background-color: #1a8cd8;
+        }
+        .avatar-gradient {
+            background: linear-gradient(135deg, #eccf4d 0%, #a37802 100%);
+        }
+        .stat-card {
+            background-color: #f7f9f9;
+            border-radius: 12px;
+            padding: 16px;
+            transition: background-color 0.2s ease;
+        }
+        .stat-card:hover {
+            background-color: #eff1f1;
         }
     </style>
 </head>
-<body class="bg-gray-100">
-    <!-- Header -->
-    <header class="bg-white shadow-sm sticky top-0 z-10">
-        <div class="container mx-auto px-4 py-3 flex justify-between items-center">
-            <div class="flex items-center space-x-2">
-                <a href="index.html" class="flex items-center space-x-2 hover:opacity-80 transition duration-200">
-                    <i class="fas fa-bolt text-blue-500 text-2xl"></i>
+<body class="bg-white">
+    <!-- Main Container -->
+    <div class="flex max-w-7xl mx-auto">
+        <!-- Sidebar Kiri - Navigasi -->
+        <div class="w-64 lg:w-80 border-r border-gray-200 min-h-screen sticky top-0">
+            <div class="flex flex-col h-full p-4">
+                <!-- Logo -->
+                <div class="flex items-center space-x-2 p-3 mb-6">
+                    <i class="fas fa-bolt text-yellow-500 text-2xl"></i>
                     <h1 class="text-xl font-bold text-gray-800">Saintek Buzz</h1>
-                </a>
-            </div>
-            
-            <nav class="hidden md:flex space-x-6">
-                <a href="index.html" class="text-gray-700 hover:text-blue-500 font-medium transition duration-200">Beranda</a>
-                <a href="#" class="text-blue-500 font-medium">Profil</a>
-            </nav>
-            
-            <div class="flex items-center space-x-4">
-                <button id="logout-btn" class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded-full text-sm font-medium transition duration-200">
-                    <i class="fas fa-sign-out-alt mr-2"></i>Logout
-                </button>
-            </div>
-        </div>
-    </header>
-
-    <main class="container mx-auto px-4 py-6">
-        <div class="max-w-2xl mx-auto">
-            <!-- Profile Info -->
-            <div class="bg-white rounded-xl shadow-sm p-6 mb-6">
-                <div class="flex flex-col items-center text-center mb-6">
-                    <div class="w-24 h-24 avatar-gradient rounded-full flex items-center justify-center text-white text-3xl font-bold mb-4 shadow-lg">
-                        <span id="profile-initial">U</span>
-                    </div>
-                    <h2 id="profile-name" class="text-2xl font-bold text-gray-800 mb-2">Username</h2>
-                    <p id="profile-details" class="text-gray-600">Jurusan • Angkatan</p>
-                    <p id="profile-email" class="text-gray-500 text-sm mt-1"></p>
                 </div>
                 
-                <div class="grid grid-cols-2 gap-4 text-center">
-                    <div class="stat-card bg-gray-50 rounded-lg p-4 border border-gray-100">
-                        <div id="post-count" class="text-2xl font-bold text-gray-800">0</div>
-                        <div class="text-gray-600 text-sm">Posts</div>
+                <!-- Navigasi -->
+                <nav class="flex-grow">
+                    <a href="index.html" class="sidebar-item">
+                        <i class="fas fa-home"></i>
+                        <span>Home</span>
+                    </a>
+                    <a href="#" class="sidebar-item active">
+                        <i class="fas fa-user"></i>
+                        <span>Profile</span>
+                    </a>
+                </nav>
+                
+                <!-- User Info & Logout -->
+                <div class="mt-auto pt-4 border-t border-gray-200">
+                    <div class="flex items-center justify-between p-3 rounded-full hover:bg-gray-100">
+                        <div class="flex items-center">
+                            <div class="w-10 h-10 bg-yellow-500 rounded-full flex items-center justify-center text-white font-bold mr-3" id="user-avatar">
+                                U
+                            </div>
+                            <div>
+                                <div class="font-bold text-sm" id="profile-sidebar-name">Username</div>
+                            </div>
+                        </div>
+                        <button id="logout-btn" class="text-gray-500 hover:text-gray-700">
+                            <i class="fas fa-sign-out-alt"></i>
+                        </button>
                     </div>
-                    <div class="stat-card bg-gray-50 rounded-lg p-4 border border-gray-100">
-                        <div id="like-count" class="text-2xl font-bold text-gray-800">0</div>
-                        <div class="text-gray-600 text-sm">Likes</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Konten Utama Profile -->
+        <div class="flex-1 max-w-2xl border-r border-gray-200">
+            <!-- Header Profile -->
+            <header class="sticky top-0 bg-white bg-opacity-90 backdrop-blur-sm z-10 border-b border-gray-200">
+                <div class="px-4 py-3">
+                    <div class="flex items-center">
+                        <a href="index.html" class="mr-6 text-gray-700 hover:text-blue-500">
+                            <i class="fas fa-arrow-left"></i>
+                        </a>
+                        <div>
+                            <h2 class="text-xl font-bold text-gray-800" id="profile-header-name">Profil</h2>
+                            <p class="text-gray-500 text-sm" id="post-count-header">0 posts</p>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Profile Info -->
+            <div class="border-b border-gray-200">
+                <!-- Banner -->
+                <div class="h-48 bg-gradient-to-r from-yellow-400 to-yellow-700"></div>
+                
+                <!-- Profile Details -->
+                <div class="px-6 pb-6 relative">
+                    <div class="flex justify-between">
+                        <div class="flex items-end -mt-20">
+                            <div class="w-40 h-40 avatar-gradient rounded-full flex items-center justify-center text-white text-5xl font-bold border-4 border-white shadow-lg">
+                                <span id="profile-initial">U</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-4">
+                        <h2 id="profile-name" class="text-2xl font-bold text-gray-800">Username</h2>
+                        <p id="profile-details" class="text-gray-600 mt-2">Jurusan • Angkatan</p>
+                    </div>
+
+                    <!-- Stats -->
+                    <div class="grid grid-cols-2 gap-4 mt-6">
+                        <div class="stat-card">
+                            <div id="post-count" class="text-2xl font-bold text-gray-800">0</div>
+                            <div class="text-gray-600 text-sm">Posts</div>
+                        </div>
+                        <div class="stat-card">
+                            <div id="like-count" class="text-2xl font-bold text-gray-800">0</div>
+                            <div class="text-gray-600 text-sm">Likes</div>
+                        </div>
                     </div>
                 </div>
             </div>
             
             <!-- User Posts -->
             <div>
-                <div class="flex items-center justify-between mb-4">
-                    <h3 class="text-xl font-bold text-gray-800">Posts Saya</h3>
+                <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+                    <h3 class="text-xl font-bold text-gray-800">Posts</h3>
                     <div class="flex items-center space-x-2 text-sm text-gray-500">
-                        <i class="fas fa-sort"></i>
-                        <span>Terbaru</span>
                     </div>
                 </div>
                 <div id="user-posts-container">
@@ -91,7 +168,6 @@
                 </div>
             </div>
         </div>
-    </main>
 
     <!-- Loading Overlay -->
     <div id="loading-overlay" class="fixed inset-0 bg-white bg-opacity-80 flex items-center justify-center z-50 hidden">

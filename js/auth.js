@@ -28,8 +28,11 @@ class AuthManager {
       this.showElement('post-form-container');
       this.showElement('profile-link');
       
-      // Update user avatar
+      // Update user avatar di header dan sidebar
       this.updateUserAvatar(user);
+      
+      // Update sidebar user info
+      this.updateSidebarUserInfo(user);
       
       // Load user-specific data
       this.loadUserData();
@@ -47,6 +50,9 @@ class AuthManager {
       this.hideElement('post-form-container');
       this.hideElement('profile-link');
       
+      // Reset sidebar user info
+      this.resetSidebarUserInfo();
+      
       // Clear user data
       this.clearUserData();
       
@@ -56,10 +62,64 @@ class AuthManager {
   }
 
   updateUserAvatar(user) {
-    const userAvatar = document.getElementById('user-avatar');
-    if (userAvatar && user.displayName) {
-      userAvatar.textContent = user.displayName.charAt(0).toUpperCase();
-      userAvatar.title = user.displayName;
+    // Update avatar di header (form)
+    const userAvatarForm = document.getElementById('user-avatar-form');
+    if (userAvatarForm && user.displayName) {
+      userAvatarForm.textContent = user.displayName.charAt(0).toUpperCase();
+      userAvatarForm.title = user.displayName;
+    }
+    
+    // Update avatar di sidebar
+    const userAvatarSidebar = document.getElementById('user-avatar');
+    if (userAvatarSidebar && user.displayName) {
+      userAvatarSidebar.textContent = user.displayName.charAt(0).toUpperCase();
+      userAvatarSidebar.title = user.displayName;
+    }
+  }
+
+  updateSidebarUserInfo(user) {
+    const userName = document.getElementById('user-name');
+    const userEmail = document.getElementById('user-email');
+    const userInfoSidebar = document.getElementById('user-info-sidebar');
+    const loginSidebar = document.getElementById('login-sidebar');
+    const postFormSidebar = document.getElementById('post-form-sidebar');
+    
+    if (userName && user.displayName) {
+      userName.textContent = user.displayName;
+    }
+    if (userEmail && user.email) {
+      userEmail.textContent = `@${user.email.split('@')[0]}`;
+    }
+    if (userInfoSidebar) {
+      userInfoSidebar.classList.remove('hidden');
+    }
+    if (loginSidebar) {
+      loginSidebar.classList.add('hidden');
+    }
+    if (postFormSidebar) {
+      postFormSidebar.classList.remove('hidden');
+    }
+  }
+
+  resetSidebarUserInfo() {
+    const userInfoSidebar = document.getElementById('user-info-sidebar');
+    const loginSidebar = document.getElementById('login-sidebar');
+    const postFormSidebar = document.getElementById('post-form-sidebar');
+    
+    if (userInfoSidebar) {
+      userInfoSidebar.classList.add('hidden');
+    }
+    if (loginSidebar) {
+      loginSidebar.classList.remove('hidden');
+    }
+    if (postFormSidebar) {
+      postFormSidebar.classList.add('hidden');
+    }
+    
+    // Reset avatar di form
+    const userAvatarForm = document.getElementById('user-avatar-form');
+    if (userAvatarForm) {
+      userAvatarForm.innerHTML = '<i class="fas fa-user"></i>';
     }
   }
 
@@ -86,7 +146,7 @@ class AuthManager {
   clearUserData() {
     const postsContainer = document.getElementById('posts-container');
     if (postsContainer) {
-      postsContainer.innerHTML = '<p class="text-center text-gray-500 py-8">Silakan login untuk melihat posts</p>';
+      postsContainer.innerHTML = '<div class="text-center py-12"><p class="text-gray-500">Please login to see posts</p></div>';
     }
   }
 

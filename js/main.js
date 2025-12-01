@@ -212,7 +212,7 @@ function loadAllPosts() {
     if (!postsContainer) return;
     
     // Tampilkan loading
-    postsContainer.innerHTML = '<div class="text-center py-8"><i class="fas fa-spinner fa-spin text-blue-500 text-2xl"></i></div>';
+    postsContainer.innerHTML = '<div class="text-center py-8"><i class="fas fa-spinner fa-spin text-green-700 text-2xl"></i></div>';
     
     // Ambil semua posts dari Firestore, urutkan berdasarkan waktu dibuat (terbaru dulu)
     db.collection('posts')
@@ -258,7 +258,7 @@ function createPostElement(post, postId) {
     // Tampilkan avatar berdasarkan apakah post anonim atau tidak
     const avatar = post.isAnonymous 
         ? '<div class="w-10 h-10 bg-gray-400 rounded-full flex items-center justify-center text-white font-bold">A</div>'
-        : `<div class="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold">${post.authorName.charAt(0).toUpperCase()}</div>`;
+        : `<div class="w-10 h-10 bg-yellow-500 rounded-full flex items-center justify-center text-white font-bold">${post.authorName.charAt(0).toUpperCase()}</div>`;
     
     // Tampilkan nama author
     const authorName = post.isAnonymous ? 'Anonim' : post.authorName;
@@ -270,7 +270,7 @@ function createPostElement(post, postId) {
     
     // Tampilkan hashtag
     const hashtagsHtml = post.hashtags.map(tag => 
-        `<span class="text-blue-500 hover:underline cursor-pointer">#${tag}</span>`
+        `<span class="text-green-700 border rounded-full px-2 bg-green-100 border-green-200 hover:underline cursor-pointer">#${tag}</span>`
     ).join(' ');
     
     // Cek apakah user sudah like post ini
@@ -290,7 +290,7 @@ function createPostElement(post, postId) {
            </button>` 
         : '';
     
-    postElement.innerHTML = `
+       postElement.innerHTML = `
         <div class="flex space-x-3">
             <div class="flex-shrink-0">
                 ${avatar}
@@ -299,22 +299,26 @@ function createPostElement(post, postId) {
                 <div class="flex justify-between items-start">
                     <div>
                         <span class="font-bold text-gray-800">${authorName}</span>
-                        <span class="text-gray-500 text-sm ml-2">${timeAgo}</span>
+                        <span class="text-gray-500 text-sm"> · ${timeAgo}</span>
                         ${jurusanHtml}
                     </div>
                     ${deleteButton}
                 </div>
-                <p class="mt-2 text-gray-800 whitespace-pre-wrap">${formatPostContent(post.content)}</p>
+                <p class="mt-2 text-gray-800 text-lg whitespace-pre-wrap">${formatPostContent(post.content)}</p>
                 
-                ${post.hashtags.length > 0 ? `<div class="mt-2 flex flex-wrap gap-1">${hashtagsHtml}</div>` : ''}
+                ${post.hashtags.length > 0 ? `
+                    <div class="mt-3 flex flex-wrap gap-2">
+                        ${hashtagsHtml}
+                    </div>
+                ` : ''}
                 
-                <div class="mt-4 flex space-x-6 text-gray-500">
-                    <button class="flex items-center space-x-1 like-btn ${isLiked ? 'text-red-500' : ''}" data-postid="${postId}">
-                        <i class="${likeIcon}"></i>
+                <div class="mt-4 flex space-x-12 text-gray-500">
+                    <button class="flex items-center space-x-2 like-btn ${isLiked ? 'text-red-500' : ''}" data-postid="${postId}">
+                        <i class="${likeIcon} text-lg"></i>
                         <span>${likeCount}</span>
                     </button>
-                    <button class="flex items-center space-x-1 comment-btn" data-postid="${postId}">
-                        <i class="far fa-comment"></i>
+                    <button class="flex items-center space-x-2 comment-btn" data-postid="${postId}">
+                        <i class="far fa-comment text-lg"></i>
                         <span>${commentCount}</span>
                     </button>
                 </div>
@@ -356,7 +360,7 @@ function createPostElement(post, postId) {
 
 // Fungsi untuk memformat konten post (menyoroti hashtag)
 function formatPostContent(content) {
-    return content.replace(/#(\w+)/g, '<span class="text-blue-500">#$1</span>');
+    return content.replace(/#(\w+)/g, '<span class="text-green-600">#$1</span>');
 }
 
 // Fungsi untuk memformat waktu
@@ -454,7 +458,7 @@ function openCommentModal(postId) {
     // Tampilkan loading
     modalContent.innerHTML = `
         <div class="text-center py-8">
-            <i class="fas fa-spinner fa-spin text-blue-500 text-2xl mb-2"></i>
+            <i class="fas fa-spinner fa-spin text-green-500 text-2xl mb-2"></i>
             <p class="text-gray-500">Memuat komentar...</p>
         </div>
     `;
@@ -504,7 +508,7 @@ function openCommentModal(postId) {
                 <div class="mb-6 border-b pb-4">
                     <div class="flex space-x-3">
                         <div class="flex-shrink-0">
-                            <div class="w-10 h-10 ${post.isAnonymous ? 'bg-gray-400' : 'bg-blue-500'} rounded-full flex items-center justify-center text-white font-bold">
+                            <div class="w-10 h-10 ${post.isAnonymous ? 'bg-gray-400' : 'bg-yellow-500'} rounded-full flex items-center justify-center text-white font-bold">
                                 ${post.isAnonymous ? 'A' : (post.authorName ? post.authorName.charAt(0).toUpperCase() : 'U')}
                             </div>
                         </div>
@@ -556,7 +560,7 @@ function openCommentModal(postId) {
                 <div class="border-t pt-4">
                     <div class="flex space-x-3">
                         <div class="flex-shrink-0">
-                            <div class="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm font-bold">
+                            <div class="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center text-white text-sm font-bold">
                                 ${user.displayName ? user.displayName.charAt(0).toUpperCase() : 'U'}
                             </div>
                         </div>
@@ -564,7 +568,7 @@ function openCommentModal(postId) {
                             <textarea 
                                 id="comment-input" 
                                 placeholder="Tulis komentar Anda..." 
-                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
                                 rows="3"
                             ></textarea>
                             <div class="mt-2 flex justify-between items-center">
@@ -573,7 +577,7 @@ function openCommentModal(postId) {
                                 </div>
                                 <button 
                                     id="submit-comment" 
-                                    class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition duration-200"
+                                    class="bg-green-700 hover:bg-green-800 text-white px-4 py-2 rounded-lg text-sm font-medium transition duration-200"
                                 >
                                     <i class="fas fa-paper-plane mr-2"></i>Kirim Komentar
                                 </button>
@@ -740,7 +744,7 @@ function filterPostsByHashtag(hashtag) {
     const postsContainer = document.getElementById('posts-container');
     
     // Tampilkan loading
-    postsContainer.innerHTML = '<div class="text-center py-8"><i class="fas fa-spinner fa-spin text-blue-500 text-2xl"></i></div>';
+    postsContainer.innerHTML = '<div class="text-center py-8"><i class="fas fa-spinner fa-spin text-green-500 text-2xl"></i></div>';
     
     // Update UI filter aktif
     updateActiveFilterUI(hashtag);
@@ -770,15 +774,14 @@ function filterPostsByHashtag(hashtag) {
                 
                 // Tambahkan header filter
                 const filterHeader = document.createElement('div');
-                filterHeader.className = 'bg-blue-50 rounded-lg p-4 mb-4';
+                filterHeader.className = 'bg-green-50 rounded-lg p-4 mb-4';
                 filterHeader.innerHTML = `
                     <div class="flex items-center justify-between">
                         <div class="flex items-center space-x-2">
-                            <i class="fas fa-filter text-blue-500"></i>
-                            <span class="text-blue-700 font-medium">Menampilkan post dengan hashtag</span>
-                            <span class="bg-blue-500 text-white px-2 py-1 rounded-full text-sm">#${hashtag}</span>
+                            <span class="text-green-700 font-medium">Menampilkan post dengan hashtag</span>
+                            <span class="bg-green-600 text-white px-2 py-1 rounded-full text-sm">#${hashtag}</span>
                         </div>
-                        <span class="text-blue-600 text-sm">${querySnapshot.size} posts ditemukan</span>
+                        <span class="text-green-600 text-sm">${querySnapshot.size} posts ditemukan</span>
                     </div>
                 `;
                 postsContainer.appendChild(filterHeader);
