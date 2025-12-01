@@ -71,10 +71,20 @@ document.addEventListener('DOMContentLoaded', () => {
     if (postBtn) {
         postBtn.addEventListener('click', createPost);
     }
+    
+    // Enter key untuk post (opsional)
+    if (postContent) {
+        postContent.addEventListener('keydown', (e) => {
+            if (e.ctrlKey && e.key === 'Enter') {
+                createPost();
+            }
+        });
+    }
 });
 
 // Fungsi untuk membuat post baru
-function createPost() {
+// Fungsi untuk membuat post baru
+async function createPost() {
     const postContent = document.getElementById('post-content');
     const anonymous = document.getElementById('anonymous')?.checked || false;
     const user = auth.currentUser;
@@ -103,91 +113,116 @@ function createPost() {
         postBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Posting...';
     }
     
-    // Ekstrak hashtag dari konten
-    const hashtags = extractHashtags(content);
-    
-    // Buat data post dasar dulu
-    const postData = {
-        content: content,
-        authorId: user.uid,
-        authorName: anonymous ? 'Anonim' : (user.displayName || 'User'),
-        isAnonymous: anonymous,
-        hashtags: hashtags,
-        likes: [],
-        comments: [],
-        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-    };
-    
-    // Jika bukan anonymous, cari data jurusan user
-    if (!anonymous) {
-        db.collection('users').doc(user.uid).get()
-            .then((userDoc) => {
-                if (userDoc.exists) {
-                    const userData = userDoc.data();
-                    postData.authorJurusan = userData.jurusan || '';
-                }
-                
-                // Simpan post ke Firestore
-                return db.collection('posts').add(postData);
-            })
-            .then((docRef) => {
-                console.log('Post berhasil dibuat dengan ID:', docRef.id);
-                
-                // Reset form
-                if (postContent) {
-                    postContent.value = '';
-                }
-                document.getElementById('char-count').textContent = '0/280';
-                document.getElementById('anonymous').checked = false;
-                
-                // Muat ulang posts dengan filter yang aktif
-                loadPosts();
-                
-                // Perbarui jumlah hashtag
-                loadHashtagCounts();
-            })
-            .catch((error) => {
-                console.error('Error membuat post: ', error);
-                alert('Terjadi kesalahan saat membuat post: ' + error.message);
-            })
-            .finally(() => {
-                // Enable tombol post kembali
-                if (postBtn) {
-                    postBtn.disabled = false;
-                    postBtn.innerHTML = 'Post';
-                }
-            });
-    } else {
-        // Untuk post anonymous, langsung simpan tanpa jurusan
-        db.collection('posts').add(postData)
-            .then((docRef) => {
-                console.log('Post anonim berhasil dibuat dengan ID:', docRef.id);
-                
-                // Reset form
-                if (postContent) {
-                    postContent.value = '';
-                }
-                document.getElementById('char-count').textContent = '0/280';
-                document.getElementById('anonymous').checked = false;
-                
-                // Muat ulang posts dengan filter yang aktif
-                loadPosts();
-                
-                // Perbarui jumlah hashtag
-                loadHashtagCounts();
-            })
-            .catch((error) => {
-                console.error('Error membuat post: ', error);
-                alert('Terjadi kesalahan saat membuat post: ' + error.message);
-            })
-            .finally(() => {
-                // Enable tombol post kembali
-                if (postBtn) {
-                    postBtn.disabled = false;
-                    postBtn.innerHTML = 'Post';
-                }
-            });
+    try {
+        // Dapatkan data gambar dari CloudinaryManager
+        let imageUrl = null;
+        let imagePublicId = null;
+        
+        if (window.cloudinaryManager) {
+            const imageData = window.cloudinaryManager.getImageData();
+            if (imageData && imageData.imageUrl) {
+                imageUrl = imageData.imageUrl;
+                console.log('Image data found:', imageUrl);
+            }
+        }
+        
+        // Ekstrak hashtag dari konten
+        const hashtags = extractHashtags(content);
+        
+        // Buat data post dasar
+        const postData = {
+            content: content,
+            authorId: user.uid,
+            authorName: anonymous ? 'Anonim' : (user.displayName || 'User'),
+            isAnonymous: anonymous,
+            hashtags: hashtags,
+            likes: [],
+            comments: [],
+            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+            imageUrl: imageUrl,
+            imagePublicId: imageUrl ? imageUrl.split('/').pop().split('.')[0] : null
+        };
+        
+        // Jika bukan anonymous, cari data jurusan user
+        if (!anonymous) {
+            const userDoc = await db.collection('users').doc(user.uid).get();
+            if (userDoc.exists) {
+                const userData = userDoc.data();
+                postData.authorJurusan = userData.jurusan || '';
+            }
+        }
+        
+        // Simpan post ke Firestore
+        const docRef = await db.collection('posts').add(postData);
+        console.log('Post berhasil dibuat dengan ID:', docRef.id);
+        
+        // Reset form
+        if (postContent) {
+            postContent.value = '';
+        }
+        document.getElementById('char-count').textContent = '0/280';
+        document.getElementById('anonymous').checked = false;
+        
+        // Reset image preview
+        if (window.cloudinaryManager) {
+            window.cloudinaryManager.reset();
+        }
+        
+        // Muat ulang posts dengan filter yang aktif
+        loadPosts();
+        
+        // Perbarui jumlah hashtag
+        loadHashtagCounts();
+        
+        // Tampilkan notifikasi sukses
+        showNotification('Post berhasil dibuat!', 'success');
+        
+    } catch (error) {
+        console.error('Error membuat post: ', error);
+        alert('Terjadi kesalahan saat membuat post: ' + error.message);
+        showNotification('Gagal membuat post: ' + error.message, 'error');
+    } finally {
+        // Enable tombol post kembali
+        if (postBtn) {
+            postBtn.disabled = false;
+            postBtn.innerHTML = 'Post';
+        }
     }
+}
+
+// Fungsi untuk menampilkan notifikasi
+function showNotification(message, type = 'info') {
+    const notification = document.createElement('div');
+    notification.className = `fixed bottom-4 right-4 px-4 py-3 rounded-lg shadow-lg z-50 transition-all duration-300 transform translate-y-0 ${
+        type === 'success' ? 'bg-green-500 text-white' :
+        type === 'error' ? 'bg-red-500 text-white' :
+        'bg-blue-500 text-white'
+    }`;
+    
+    notification.innerHTML = `
+        <div class="flex items-center space-x-2">
+            <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'}"></i>
+            <span>${message}</span>
+        </div>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // Animate in
+    setTimeout(() => {
+        notification.style.transform = 'translateY(0)';
+    }, 10);
+    
+    // Remove after 3 seconds
+    setTimeout(() => {
+        notification.style.transform = 'translateY(20px)';
+        notification.style.opacity = '0';
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.parentNode.removeChild(notification);
+            }
+        }, 300);
+    }, 3000);
 }
 
 // Fungsi untuk mengekstrak hashtag dari teks
@@ -290,7 +325,20 @@ function createPostElement(post, postId) {
            </button>` 
         : '';
     
-       postElement.innerHTML = `
+    // Tampilkan gambar jika ada
+    let imageHtml = '';
+    if (post.imageUrl) {
+        imageHtml = `
+            <div class="mt-3">
+                <img src="${post.imageUrl}" 
+                     alt="Post image" 
+                     class="rounded-xl max-w-full h-auto max-h-96 object-contain cursor-pointer post-image"
+                     onclick="window.openImageModal('${post.imageUrl}')">
+            </div>
+        `;
+    }
+    
+    postElement.innerHTML = `
         <div class="flex space-x-3">
             <div class="flex-shrink-0">
                 ${avatar}
@@ -305,6 +353,8 @@ function createPostElement(post, postId) {
                     ${deleteButton}
                 </div>
                 <p class="mt-2 text-gray-800 text-lg whitespace-pre-wrap">${formatPostContent(post.content)}</p>
+                
+                ${imageHtml}
                 
                 ${post.hashtags.length > 0 ? `
                     <div class="mt-3 flex flex-wrap gap-2">
@@ -332,14 +382,13 @@ function createPostElement(post, postId) {
         likeBtn.addEventListener('click', () => toggleLike(postId));
     }
     
-    // Tambahkan event listener untuk tombol komentar - INI YANG DIPERBAIKI
+    // Tambahkan event listener untuk tombol komentar
     const commentBtn = postElement.querySelector('.comment-btn');
     if (commentBtn) {
         commentBtn.addEventListener('click', (e) => {
             e.preventDefault();
             e.stopPropagation();
             console.log('Comment button clicked for post:', postId);
-            // Pastikan fungsi tersedia
             if (typeof window.openCommentModal === 'function') {
                 window.openCommentModal(postId);
             } else {
@@ -860,8 +909,31 @@ function loadHashtagCounts() {
     });
 }
 
+// Di main.js tambahkan:
+function openImageModal(imageUrl) {
+    const modal = document.createElement('div');
+    modal.className = 'fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50';
+    modal.innerHTML = `
+        <div class="relative">
+            <button class="absolute -top-10 right-0 text-white text-2xl" onclick="this.parentElement.parentElement.remove()">
+                <i class="fas fa-times"></i>
+            </button>
+            <img src="${imageUrl}" class="max-w-full max-h-[90vh] rounded-lg">
+        </div>
+    `;
+    modal.onclick = (e) => {
+        if (e.target === modal) {
+            modal.remove();
+        }
+    };
+    document.body.appendChild(modal);
+}
+
+
+
 // === EXPORT FUNGSI KE GLOBAL SCOPE ===
 window.openCommentModal = openCommentModal;
 window.addComment = addComment;
 window.formatTimeAgo = formatTimeAgo;
 window.filterPostsByHashtag = filterPostsByHashtag;
+window.openImageModal = openImageModal;
