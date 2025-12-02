@@ -448,7 +448,8 @@ function formatTimeAgo(timestamp) {
 
 // === FUNGSI LIKE/UNLIKE ===
 
-function toggleLike(postId) {
+// Versi terbaik dari toggleLike
+async function toggleLike(postId) {
     const user = auth.currentUser;
     
     if (!user) {
@@ -456,33 +457,77 @@ function toggleLike(postId) {
         return;
     }
     
-    const postRef = db.collection('posts').doc(postId);
+    // Update UI terlebih dahulu untuk responsif
+    const postElement = document.getElementById(`post-${postId}`);
+    const likeBtn = postElement?.querySelector('.like-btn');
+    const likeIcon = postElement?.querySelector('.like-btn i');
+    const likeCountSpan = postElement?.querySelector('.like-btn span');
     
-    // Ambil data post terlebih dahulu
-    postRef.get().then((doc) => {
+    if (likeBtn && likeIcon && likeCountSpan) {
+        // Dapatkan state saat ini dari UI
+        const isCurrentlyLiked = likeIcon.classList.contains('fa-heart') && 
+                                !likeIcon.classList.contains('far');
+        const currentCount = parseInt(likeCountSpan.textContent) || 0;
+        
+        // Update UI lokal terlebih dahulu
+        if (isCurrentlyLiked) {
+            // Unlike
+            likeIcon.className = 'far fa-heart text-gray-500 text-lg';
+            likeBtn.classList.remove('text-red-500');
+            likeCountSpan.textContent = Math.max(0, currentCount - 1);
+        } else {
+            // Like
+            likeIcon.className = 'fas fa-heart text-red-500 text-lg';
+            likeBtn.classList.add('text-red-500');
+            likeCountSpan.textContent = currentCount + 1;
+        }
+        
+        // Tambah animasi
+        likeBtn.style.transform = 'scale(1.2)';
+        setTimeout(() => {
+            likeBtn.style.transform = 'scale(1)';
+        }, 200);
+    }
+    
+    // Kemudian update ke server
+    try {
+        const postRef = db.collection('posts').doc(postId);
+        const doc = await postRef.get();
+        
         if (doc.exists) {
             const post = doc.data();
             const likes = post.likes || [];
-            const isLiked = likes.includes(user.uid);
+            const isLikedOnServer = likes.includes(user.uid);
             
-            if (isLiked) {
-                // Unlike post
+            if (isLikedOnServer) {
+                // Unlike di server
                 const updatedLikes = likes.filter(uid => uid !== user.uid);
-                return postRef.update({ likes: updatedLikes });
+                await postRef.update({ likes: updatedLikes });
             } else {
-                // Like post
+                // Like di server
                 const updatedLikes = [...likes, user.uid];
-                return postRef.update({ likes: updatedLikes });
+                await postRef.update({ likes: updatedLikes });
             }
         }
-    })
-    .then(() => {
-        // Muat ulang posts untuk memperbarui UI
-        loadPosts();
-    })
-    .catch((error) => {
-        console.error('Error toggling like: ', error);
-    });
+    } catch (error) {
+        console.error('Error updating like on server:', error);
+        
+        // Rollback UI jika server error
+        if (likeBtn && likeIcon && likeCountSpan) {
+            // Kembalikan ke state sebelumnya
+            if (isCurrentlyLiked) {
+                likeIcon.className = 'fas fa-heart text-red-500 text-lg';
+                likeBtn.classList.add('text-red-500');
+                likeCountSpan.textContent = currentCount;
+            } else {
+                likeIcon.className = 'far fa-heart text-gray-500 text-lg';
+                likeBtn.classList.remove('text-red-500');
+                likeCountSpan.textContent = currentCount;
+            }
+            
+            alert('Terjadi kesalahan saat menyimpan like');
+        }
+    }
 }
 
 // === FUNGSI COMMENT MODAL === 
