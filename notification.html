@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notification - Saintek Buzz</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/8.10.1/firebase-app.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/8.10.1/firebase-auth.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/8.10.1/firebase-firestore.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .sidebar-item {
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            margin: 4px 0;
+            border-radius: 9999px;
+            transition: background-color 0.2s ease;
+        }
+        .sidebar-item:hover {
+            background-color: rgba(29, 240, 82, 0.1);
+        }
+        .sidebar-item.active {
+            font-weight: bold;
+            background-color: rgba(29, 240, 82, 0.1);
+        }
+        .sidebar-item i {
+            width: 24px;
+            margin-right: 16px;
+            text-align: center;
+        }
+        .notification-item {
+            border-bottom: 1px solid #eff3f4;
+            border-radius: 0;
+            transition: background-color 0.2s ease;
+            cursor: pointer;
+        }
+        .notification-item:hover {
+            background-color: #f7f9f9;
+        }
+        .notification-item.unread {
+            background-color: #f0f9ff;
+        }
+        .notification-item.unread:hover {
+            background-color: #e0f2fe;
+        }
+        .notification-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: #1d9bf0;
+        }
+    </style>
+</head>
+<body class="bg-white">
+    <!-- Main Container -->
+    <div class="flex max-w-7xl mx-auto">
+        <!-- Sidebar Kiri - Navigasi -->
+        <div class="w-64 lg:w-80 border-r border-gray-200 min-h-screen sticky top-0">
+            <div class="flex flex-col h-full p-4">
+                <!-- Logo -->
+                <div class="flex items-center space-x-2 p-3 mb-6">
+                    <img src="assets/Group 2.svg" class="w-8 h-8">
+                    <h1 class="text-xl font-bold text-green-700">Saintek Buzz</h1>
+                </div>
+                
+                <!-- Navigasi -->
+                <nav class="flex-grow">
+                    <a href="index.html" class="sidebar-item">
+                        <i class="fas fa-home"></i>
+                        <span>Home</span>
+                    </a>
+                    <a href="profile.html" class="sidebar-item">
+                        <i class="fas fa-user"></i>
+                        <span>Profile</span>
+                    </a>
+                    <a href="notification.html" class="sidebar-item active">
+                        <i class="fas fa-bell"></i>
+                        <span>Notification</span>
+                    </a>
+                </nav>
+                
+            </div>
+        </div>
+
+        <!-- Konten Utama Notifikasi -->
+        <div class="flex-1 max-w-2xl border-r border-gray-200">
+            <!-- Header Notifikasi -->
+            <header class="sticky top-0 bg-white bg-opacity-90 backdrop-blur-sm z-10 border-b border-gray-200">
+                <div class="px-4 py-3">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center">
+                            <h2 class="text-xl font-bold text-gray-800">Notifikasi</h2>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Daftar Notifikasi -->
+            <div id="notifications-container">
+                <!-- Notifikasi akan dimuat di sini -->
+                <div class="text-center py-8">
+                    <i class="fas fa-spinner fa-spin text-green-500 text-2xl"></i>
+                    <p class="text-gray-500 mt-2">Memuat notifikasi...</p>
+                </div>
+            </div>
+
+            <!-- Pesan jika tidak ada notifikasi -->
+            <div id="no-notifications" class="hidden text-center py-12">
+                <i class="fas fa-bell-slash text-gray-300 text-4xl mb-3"></i>
+                <p class="text-gray-500">Belum ada notifikasi</p>
+                <p class="text-gray-400 text-sm mt-2">Notifikasi akan muncul di sini</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/firebase.js"></script>
+    <script src="js/notification.js"></script>
+</body>
+</html>

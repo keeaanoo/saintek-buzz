@@ -1,20 +1,26 @@
 class ProfileManager {
     constructor() {
         this.user = null;
+        this.selectedAvatarFile = null;
+        this.selectedAvatarUrl = null;
         this.init();
     }
 
     init() {
-        auth.onAuthStateChanged((user) => {
-            if (user) {
-                this.user = user;
-                this.handleUserAuthenticated(user);
-            } else {
-                window.location.href = 'login.html';
-            }
-        });
+    auth.onAuthStateChanged((user) => {
+        if (user) {
+            this.user = user;
+            this.handleUserAuthenticated(user);
+            
+            // Handle notification redirect
+            this.handleNotificationRedirect();
+        } else {
+            window.location.href = 'login.html';
+        }
+    });
 
-        this.setupEventListeners();
+    this.setupEventListeners();
+    this.setupAvatarUpload();
     }
 
     async handleUserAuthenticated(user) {
@@ -42,6 +48,11 @@ class ProfileManager {
             if (userDoc.exists) {
                 const userData = userDoc.data();
                 this.updateProfileDetails(userData);
+                
+                // Load avatar if exists
+                if (userData.avatarUrl) {
+                    this.updateAvatarInUI(userData.avatarUrl);
+                }
             } else {
                 console.warn('User document not found in Firestore');
             }
@@ -86,7 +97,7 @@ class ProfileManager {
 
         // Update avatar in sidebar
         const userAvatar = document.getElementById('user-avatar');
-        if (userAvatar && user.displayName) {
+        if (userAvatar && user.displayName && !userAvatar.querySelector('img')) {
             userAvatar.textContent = user.displayName.charAt(0).toUpperCase();
         }
     }
@@ -104,7 +115,7 @@ class ProfileManager {
             sidebarEmail.textContent = `@${user.email.split('@')[0]}`;
         }
 
-        if (userAvatar && user.displayName) {
+        if (userAvatar && user.displayName && !userAvatar.querySelector('img')) {
             userAvatar.textContent = user.displayName.charAt(0).toUpperCase();
         }
     }
@@ -164,7 +175,7 @@ class ProfileManager {
 
     createUserPostElement(post, postId) {
         const postElement = document.createElement('div');
-        postElement.className = 'post-item px-6 py-4 hover:bg-gray-50';
+        postElement.className = 'post-item px-6 py-4 hover:bg-gray-50 border-b border-gray-100';
         
         const timeAgo = this.formatTimeAgo(post.createdAt);
         const jurusanHtml = post.authorJurusan 
@@ -215,8 +226,16 @@ class ProfileManager {
                     <span>${likeCount}</span>
                 </div>
                 <div class="flex items-center space-x-1">
-                    <i class="far fa-comment"></i>
-                    <span>${commentCount}</span>
+                    <button class="flex items-center space-x-1 view-comments-btn text-green-600 hover:text-green-800" 
+                            data-postid="${postId}"
+                            data-content="${this.escapeHtml(post.content)}"
+                            data-author="${this.escapeHtml(post.authorName || 'User')}"
+                            data-createdat="${post.createdAt ? post.createdAt.toDate ? post.createdAt.toDate().toISOString() : post.createdAt : ''}"
+                            data-jurusan="${this.escapeHtml(post.authorJurusan || '')}">
+                        <i class="far fa-comment"></i>
+                        <span>${commentCount}</span>
+                        <span class="ml-1 text-xs">lihat</span>
+                    </button>
                 </div>
             </div>
         `;
@@ -225,6 +244,26 @@ class ProfileManager {
         const deleteBtn = postElement.querySelector('.delete-post');
         if (deleteBtn) {
             deleteBtn.addEventListener('click', () => this.deletePost(postId));
+        }
+        
+        // Add view comments event listener
+        const viewCommentsBtn = postElement.querySelector('.view-comments-btn');
+        if (viewCommentsBtn) {
+            viewCommentsBtn.addEventListener('click', (e) => {
+                const postId = e.currentTarget.dataset.postid;
+                const postContent = e.currentTarget.dataset.content;
+                const authorName = e.currentTarget.dataset.author;
+                const createdAt = e.currentTarget.dataset.createdat;
+                const authorJurusan = e.currentTarget.dataset.jurusan;
+                
+                this.showPostComments(
+                    postId, 
+                    postContent, 
+                    authorName, 
+                    createdAt, 
+                    authorJurusan
+                );
+            });
         }
 
         return postElement;
@@ -268,6 +307,12 @@ class ProfileManager {
         return content.replace(/#(\w+)/g, '<span class="text-green-700">#$1</span>');
     }
 
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
     formatTimeAgo(timestamp) {
         if (!timestamp) return 'Baru saja';
         
@@ -303,6 +348,592 @@ class ProfileManager {
             logoutBtn.addEventListener('click', () => {
                 this.handleLogout();
             });
+        }
+    }
+
+    setupAvatarUpload() {
+        // Event listener untuk tombol ganti avatar
+        const changeAvatarBtn = document.getElementById('change-avatar-btn');
+        const avatarFileInput = document.getElementById('avatar-file-input');
+        const avatarModal = document.getElementById('avatar-upload-modal');
+        const closeAvatarModal = document.getElementById('close-avatar-modal');
+        const cancelAvatarBtn = document.getElementById('cancel-avatar-btn');
+        const saveAvatarBtn = document.getElementById('save-avatar-btn');
+        const avatarPreview = document.getElementById('avatar-preview');
+
+        // Open avatar upload modal when avatar is clicked
+        const profileAvatar = document.getElementById('profile-avatar');
+        if (profileAvatar) {
+            profileAvatar.addEventListener('click', () => {
+                this.openAvatarUploadModal();
+            });
+        }
+
+        // Open modal via change button
+        if (changeAvatarBtn) {
+            changeAvatarBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                this.openAvatarUploadModal();
+            });
+        }
+
+        // File input change handler
+        if (avatarFileInput) {
+            avatarFileInput.addEventListener('change', (e) => {
+                this.handleAvatarSelect(e);
+            });
+        }
+
+        // Modal controls
+        if (closeAvatarModal) {
+            closeAvatarModal.addEventListener('click', () => {
+                this.closeAvatarUploadModal();
+            });
+        }
+
+        if (cancelAvatarBtn) {
+            cancelAvatarBtn.addEventListener('click', () => {
+                this.closeAvatarUploadModal();
+            });
+        }
+
+        if (saveAvatarBtn) {
+            saveAvatarBtn.addEventListener('click', () => {
+                this.saveAvatar();
+            });
+        }
+
+        // Close modal when clicking outside
+        if (avatarModal) {
+            avatarModal.addEventListener('click', (e) => {
+                if (e.target === avatarModal) {
+                    this.closeAvatarUploadModal();
+                }
+            });
+        }
+
+        // Close modal with ESC key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && avatarModal && !avatarModal.classList.contains('hidden')) {
+                this.closeAvatarUploadModal();
+            }
+        });
+    }
+
+    openAvatarUploadModal() {
+        const avatarModal = document.getElementById('avatar-upload-modal');
+        const saveAvatarBtn = document.getElementById('save-avatar-btn');
+        const avatarPreview = document.getElementById('avatar-preview');
+        const avatarFileInput = document.getElementById('avatar-file-input');
+        
+        if (avatarModal) {
+            // Reset state
+            this.selectedAvatarFile = null;
+            this.selectedAvatarUrl = null;
+            
+            // Reset preview
+            if (avatarPreview) {
+                avatarPreview.src = '';
+                avatarPreview.style.display = 'none';
+            }
+            
+            // Reset file input
+            if (avatarFileInput) {
+                avatarFileInput.value = '';
+            }
+            
+            // Disable save button
+            if (saveAvatarBtn) {
+                saveAvatarBtn.disabled = true;
+                saveAvatarBtn.textContent = 'Simpan';
+            }
+            
+            // Hide upload status
+            this.updateAvatarUploadStatus('', false);
+            
+            // Show modal
+            avatarModal.classList.remove('hidden');
+        }
+    }
+
+    closeAvatarUploadModal() {
+        const avatarModal = document.getElementById('avatar-upload-modal');
+        if (avatarModal) {
+            avatarModal.classList.add('hidden');
+        }
+    }
+
+    handleAvatarSelect(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        // Validasi file
+        if (!this.validateAvatarFile(file)) {
+            return;
+        }
+
+        // Simpan file
+        this.selectedAvatarFile = file;
+
+        // Tampilkan preview
+        this.showAvatarPreview(file);
+
+        // Enable save button
+        const saveAvatarBtn = document.getElementById('save-avatar-btn');
+        if (saveAvatarBtn) {
+            saveAvatarBtn.disabled = false;
+        }
+    }
+
+    validateAvatarFile(file) {
+        // Validasi ukuran file (max 2MB untuk avatar)
+        const maxSize = 2 * 1024 * 1024; // 2MB
+        if (file.size > maxSize) {
+            alert('Ukuran file maksimal 2MB untuk foto profil');
+            return false;
+        }
+
+        // Validasi tipe file
+        const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+        if (!validTypes.includes(file.type)) {
+            alert('Format file tidak didukung. Gunakan JPG, PNG, GIF, atau WebP');
+            return false;
+        }
+
+        return true;
+    }
+
+    showAvatarPreview(file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const avatarPreview = document.getElementById('avatar-preview');
+            if (avatarPreview) {
+                avatarPreview.src = e.target.result;
+                avatarPreview.style.display = 'block';
+            }
+        };
+        reader.readAsDataURL(file);
+    }
+
+    async saveAvatar() {
+        if (!this.selectedAvatarFile) {
+            alert('Pilih foto terlebih dahulu');
+            return;
+        }
+
+        if (!this.user) {
+            alert('User tidak ditemukan');
+            return;
+        }
+
+        const saveAvatarBtn = document.getElementById('save-avatar-btn');
+        const avatarModal = document.getElementById('avatar-upload-modal');
+
+        try {
+            // Update UI
+            if (saveAvatarBtn) {
+                saveAvatarBtn.disabled = true;
+                saveAvatarBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Menyimpan...';
+            }
+            
+            this.updateAvatarUploadStatus('Mengupload foto...', true);
+
+            // Upload ke Cloudinary
+            const imageUrl = await this.uploadAvatarToCloudinary(this.selectedAvatarFile);
+            
+            if (imageUrl) {
+                // Simpan URL avatar ke Firestore
+                await db.collection('users').doc(this.user.uid).update({
+                    avatarUrl: imageUrl,
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+
+                // Update UI
+                this.updateAvatarInUI(imageUrl);
+                
+                // Tampilkan pesan sukses
+                this.showTempMessage('Foto profil berhasil diperbarui!', 'success');
+                
+                // Tutup modal setelah 1 detik
+                setTimeout(() => {
+                    this.closeAvatarUploadModal();
+                }, 1000);
+            }
+
+        } catch (error) {
+            console.error('Error saving avatar:', error);
+            this.showTempMessage('Gagal memperbarui foto profil: ' + error.message, 'error');
+            
+            if (saveAvatarBtn) {
+                saveAvatarBtn.disabled = false;
+                saveAvatarBtn.innerHTML = 'Simpan';
+            }
+        } finally {
+            this.updateAvatarUploadStatus('', false);
+        }
+    }
+
+    async uploadAvatarToCloudinary(file) {
+        return new Promise((resolve, reject) => {
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('upload_preset', 'saintek-buzz-upload');
+            formData.append('cloud_name', 'dplvjwmvk');
+            formData.append('timestamp', (Date.now() / 1000).toString());
+
+            fetch(`https://api.cloudinary.com/v1_1/dplvjwmvk/image/upload`, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.secure_url) {
+                    resolve(data.secure_url);
+                } else {
+                    reject(new Error('Upload gagal: URL tidak ditemukan'));
+                }
+            })
+            .catch(error => {
+                reject(error);
+            });
+        });
+    }
+
+    updateAvatarInUI(avatarUrl) {
+        // Update profile page avatar
+        const profileAvatar = document.getElementById('profile-avatar');
+        if (profileAvatar) {
+            // Clear existing content
+            profileAvatar.innerHTML = '';
+            
+            // Create image element
+            const img = document.createElement('img');
+            img.src = avatarUrl;
+            img.alt = 'Profile Avatar';
+            img.className = 'w-full h-full object-cover rounded-full';
+            
+            // Add image
+            profileAvatar.appendChild(img);
+            
+            // Remove initial text
+            const initialElement = document.getElementById('profile-initial');
+            if (initialElement) {
+                initialElement.style.display = 'none';
+            }
+        }
+
+        // Update sidebar avatar
+        const sidebarAvatar = document.getElementById('user-avatar');
+        if (sidebarAvatar) {
+            sidebarAvatar.innerHTML = '';
+            const img = document.createElement('img');
+            img.src = avatarUrl;
+            img.alt = 'Profile Avatar';
+            img.className = 'w-full h-full object-cover rounded-full';
+            sidebarAvatar.appendChild(img);
+        }
+
+        // Update avatar in posts (if needed in future)
+        this.updateAllPostAvatars(avatarUrl);
+    }
+
+    updateAvatarUploadStatus(message, show = true) {
+        const statusElement = document.getElementById('avatar-upload-status');
+        const statusText = document.getElementById('avatar-status-text');
+        
+        if (statusElement && statusText) {
+            if (show) {
+                statusElement.classList.remove('hidden');
+                statusText.textContent = message;
+            } else {
+                statusElement.classList.add('hidden');
+            }
+        }
+    }
+
+    updateAllPostAvatars(avatarUrl) {
+        // This function can be used to update avatars in existing posts
+        // Currently not implemented as posts use initials or display names
+        console.log('Avatar updated:', avatarUrl);
+        // You can add logic here to update avatars in posts if needed
+    }
+
+    // ===== FUNGSI UNTUK MELIHAT KOMENTAR =====
+
+    async showPostComments(postId, postContent, authorName, createdAt, authorJurusan = '') {
+        try {
+            const postDoc = await db.collection('posts').doc(postId).get();
+            
+            if (!postDoc.exists) {
+                throw new Error('Post tidak ditemukan');
+            }
+
+            const post = postDoc.data();
+            const comments = Array.isArray(post.comments) ? post.comments : [];
+            
+            // Urutkan komentar terbaru dulu
+            comments.sort((a, b) => {
+                const timeA = a.createdAt ? (a.createdAt.toDate ? a.createdAt.toDate() : new Date(a.createdAt)) : new Date(0);
+                const timeB = b.createdAt ? (b.createdAt.toDate ? b.createdAt.toDate() : new Date(b.createdAt)) : new Date(0);
+                return timeB - timeA;
+            });
+
+            // Buat modal komentar
+            this.createCommentModal(postId, postContent, authorName, createdAt, authorJurusan, comments);
+            
+        } catch (error) {
+            console.error('Error loading comments:', error);
+            this.showTempMessage('Terjadi kesalahan saat memuat komentar', 'error');
+        }
+    }
+
+    // Tambahkan fungsi ini di class ProfileManager di profile.js
+
+    async createCommentModal(postId, postContent, authorName, createdAt, authorJurusan) {
+    try {
+        const postDoc = await db.collection('posts').doc(postId).get();
+        
+        if (!postDoc.exists) {
+            throw new Error('Post tidak ditemukan');
+        }
+
+        const post = postDoc.data();
+        const comments = Array.isArray(post.comments) ? post.comments : [];
+        
+        // Urutkan komentar terbaru dulu
+        comments.sort((a, b) => {
+            const timeA = a.createdAt ? (a.createdAt.toDate ? a.createdAt.toDate() : new Date(a.createdAt)) : new Date(0);
+            const timeB = b.createdAt ? (b.createdAt.toDate ? b.createdAt.toDate() : new Date(b.createdAt)) : new Date(0);
+            return timeB - timeA;
+        });
+
+        // Load avatar untuk setiap komentar
+        const commentsWithAvatars = await Promise.all(
+            comments.map(async (comment) => {
+                let avatarUrl = null;
+                if (comment.authorId) {
+                    try {
+                        const userDoc = await db.collection('users').doc(comment.authorId).get();
+                        if (userDoc.exists && userDoc.data().avatarUrl) {
+                            avatarUrl = userDoc.data().avatarUrl;
+                        }
+                    } catch (error) {
+                        console.error('Error loading avatar for comment:', error);
+                    }
+                }
+                return {
+                    ...comment,
+                    avatarUrl: avatarUrl
+                };
+            })
+        );
+
+        // Load avatar untuk post author
+        let postAvatarUrl = null;
+        if (post.authorId && !post.isAnonymous) {
+            try {
+                const userDoc = await db.collection('users').doc(post.authorId).get();
+                if (userDoc.exists && userDoc.data().avatarUrl) {
+                    postAvatarUrl = userDoc.data().avatarUrl;
+                }
+            } catch (error) {
+                console.error('Error loading avatar for post:', error);
+            }
+        }
+
+        // Hapus modal yang sudah ada sebelumnya
+        const existingModal = document.getElementById(`comment-modal-${postId}`);
+        if (existingModal) {
+            existingModal.remove();
+        }
+
+        const modal = document.createElement('div');
+        modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+        modal.id = `comment-modal-${postId}`;
+        
+        const timeAgo = this.formatTimeAgo(createdAt);
+        
+        // Avatar untuk post author
+        let postAvatarHtml = '';
+        if (post.isAnonymous) {
+            postAvatarHtml = '<div class="w-10 h-10 bg-gray-400 rounded-full flex items-center justify-center text-white font-bold">A</div>';
+        } else if (postAvatarUrl) {
+            const fallbackInitial = authorName ? authorName.charAt(0).toUpperCase() : 'U';
+            postAvatarHtml = `
+                <img src="${postAvatarUrl}" 
+                     alt="${authorName || 'User'}" 
+                     class="w-10 h-10 rounded-full object-cover"
+                     onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\\'w-10 h-10 bg-green-500 rounded-full flex items-center justify-center text-white font-bold\\'>${fallbackInitial}</div>'">
+            `;
+        } else {
+            const fallbackInitial = authorName ? authorName.charAt(0).toUpperCase() : 'U';
+            postAvatarHtml = `<div class="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center text-white font-bold">${fallbackInitial}</div>`;
+        }
+
+        modal.innerHTML = `
+            <div class="bg-white rounded-xl w-full max-w-2xl max-h-[90vh] overflow-hidden mx-4">
+                <!-- Header -->
+                <div class="flex justify-between items-center p-4 border-b">
+                    <h3 class="text-lg font-bold text-gray-800">
+                        <i class="far fa-comments mr-2 text-green-600"></i>
+                        Komentar (${comments.length})
+                    </h3>
+                    <button class="text-gray-500 hover:text-gray-700 close-comment-modal" data-postid="${postId}">
+                        <i class="fas fa-times text-lg"></i>
+                    </button>
+                </div>
+                
+                <!-- Content -->
+                <div class="overflow-y-auto max-h-[calc(90vh-120px)] p-4">
+                    <!-- Original Post -->
+                    <div class="mb-6 pb-4 border-b">
+                        <div class="flex space-x-3">
+                            <div class="flex-shrink-0">
+                                ${postAvatarHtml}
+                            </div>
+                            <div class="flex-grow">
+                                <div class="flex justify-between items-start">
+                                    <div>
+                                        <span class="font-bold text-gray-800">${authorName}</span>
+                                        <span class="text-gray-500 text-sm ml-2">${timeAgo}</span>
+                                        ${authorJurusan ? `<div class="text-gray-500 text-xs mt-1">${authorJurusan}</div>` : ''}
+                                    </div>
+                                </div>
+                                <p class="mt-2 text-gray-800 whitespace-pre-wrap">${postContent}</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Comments List -->
+                    <div class="space-y-4">
+                        ${commentsWithAvatars.length > 0 ? 
+                            commentsWithAvatars.map(comment => {
+                                const commentTime = this.formatTimeAgo(comment.createdAt);
+                                const fallbackInitial = comment.authorName ? comment.authorName.charAt(0).toUpperCase() : 'U';
+                                
+                                let commentAvatarHtml = '';
+                                if (comment.avatarUrl) {
+                                    commentAvatarHtml = `
+                                        <img src="${comment.avatarUrl}" 
+                                             alt="${comment.authorName || 'User'}" 
+                                             class="w-8 h-8 rounded-full object-cover"
+                                             onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\\'w-8 h-8 bg-green-500 rounded-full flex items-center justify-center text-white text-sm font-bold\\'>${fallbackInitial}</div>'">
+                                    `;
+                                } else {
+                                    commentAvatarHtml = `
+                                        <div class="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center text-white text-sm font-bold">
+                                            ${fallbackInitial}
+                                        </div>
+                                    `;
+                                }
+                                
+                                return `
+                                    <div class="flex space-x-3">
+                                        <div class="flex-shrink-0">
+                                            ${commentAvatarHtml}
+                                        </div>
+                                        <div class="flex-grow">
+                                            <div class="flex justify-between items-start">
+                                                <span class="font-semibold text-gray-800">${comment.authorName || 'User'}</span>
+                                                <span class="text-gray-500 text-xs">${commentTime}</span>
+                                            </div>
+                                            <p class="text-gray-700 mt-1 text-sm">${comment.content || ''}</p>
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('') : 
+                            '<div class="text-center py-8 text-gray-500">Belum ada komentar.</div>'
+                        }
+                    </div>
+                </div>
+                
+                <!-- Footer -->
+                <div class="p-4 border-t text-center bg-gray-50">
+                    <p class="text-gray-500 text-sm">
+                        <i class="fas fa-info-circle mr-2"></i>
+                        Anda dapat melihat komentar di sini. Untuk menambahkan komentar, buka halaman utama.
+                    </p>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        // Setup close button
+        const closeBtn = modal.querySelector('.close-comment-modal');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', () => {
+                modal.remove();
+            });
+        }
+        
+        // Close modal when clicking outside
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.remove();
+            }
+        });
+        
+        // Close with ESC key
+        const handleEscKey = (e) => {
+            if (e.key === 'Escape') {
+                modal.remove();
+                document.removeEventListener('keydown', handleEscKey);
+            }
+        };
+        document.addEventListener('keydown', handleEscKey);
+        
+        // Tambahkan style untuk scrollbar
+        this.addCommentModalStyles();
+        
+    } catch (error) {
+        console.error('Error creating comment modal:', error);
+        this.showTempMessage('Terjadi kesalahan saat memuat komentar', 'error');
+    }
+}
+
+    addCommentModalStyles() {
+        // Cek apakah style sudah ditambahkan
+        if (!document.getElementById('comment-modal-styles')) {
+            const style = document.createElement('style');
+            style.id = 'comment-modal-styles';
+            style.textContent = `
+                #comment-modal-*::-webkit-scrollbar {
+                    width: 6px;
+                }
+                
+                #comment-modal-*::-webkit-scrollbar-track {
+                    background: #f1f1f1;
+                    border-radius: 3px;
+                }
+                
+                #comment-modal-*::-webkit-scrollbar-thumb {
+                    background: #c1c1c1;
+                    border-radius: 3px;
+                }
+                
+                #comment-modal-*::-webkit-scrollbar-thumb:hover {
+                    background: #a1a1a1;
+                }
+                
+                .view-comments-btn {
+                    transition: all 0.2s ease;
+                    padding: 2px 4px;
+                    border-radius: 4px;
+                }
+                
+                .view-comments-btn:hover {
+                    transform: translateY(-1px);
+                    background-color: rgba(0, 255, 0, 0.05);
+                }
+            `;
+            document.head.appendChild(style);
         }
     }
 
@@ -364,6 +995,131 @@ class ProfileManager {
         setTimeout(() => {
             messageElement.remove();
         }, 3000);
+    }
+
+    // Tambahkan fungsi baru di class ProfileManager di profile.js
+
+async handleNotificationRedirect() {
+    try {
+        const urlParams = new URLSearchParams(window.location.search);
+        const postId = urlParams.get('post');
+        const highlight = urlParams.get('highlight');
+        
+        if (postId && highlight) {
+            // Tunggu sampai posts selesai di-load
+            await this.waitForPostsLoaded();
+            
+            // Scroll dan highlight post
+            setTimeout(() => {
+                this.highlightAndScrollToPost(postId);
+            }, 500);
+            
+            // Clear URL parameters
+            const newUrl = window.location.pathname;
+            window.history.replaceState({}, document.title, newUrl);
+        }
+    } catch (error) {
+        console.error('Error handling notification redirect:', error);
+    }
+}
+
+waitForPostsLoaded() {
+    return new Promise((resolve) => {
+        const checkInterval = setInterval(() => {
+            const postsContainer = document.getElementById('user-posts-container');
+            if (postsContainer && postsContainer.children.length > 0) {
+                clearInterval(checkInterval);
+                resolve();
+            }
+        }, 100);
+        
+        // Timeout setelah 5 detik
+        setTimeout(() => {
+            clearInterval(checkInterval);
+            resolve();
+        }, 5000);
+    });
+}
+
+highlightAndScrollToPost(postId) {
+    // Cari post element
+    const postElements = document.querySelectorAll('.post-item');
+    let targetPost = null;
+    
+    postElements.forEach(post => {
+        const deleteBtn = post.querySelector('.delete-post');
+        if (deleteBtn && deleteBtn.dataset.postid === postId) {
+            targetPost = post;
+        }
+    });
+    
+    if (targetPost) {
+        // Scroll ke post
+        targetPost.scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'center' 
+        });
+        
+        // Highlight post dengan animasi
+        this.highlightPost(targetPost);
+        
+        // Auto open comments jika ada
+        this.autoOpenCommentsIfNeeded(postId);
+    } else {
+        console.log('Post not found in profile, it might be filtered out');
+        // Tampilkan pesan bahwa post tidak ditemukan
+        this.showTempMessage('Post tidak ditemukan di halaman ini', 'info');
+    }
+}
+
+highlightPost(postElement) {
+    // Tambahkan border dan background highlight
+    postElement.style.border = '2px solid #10b981';
+    postElement.style.borderRadius = '0.75rem';
+    postElement.style.backgroundColor = '#f0fdf4';
+    postElement.style.transition = 'all 0.5s ease';
+    
+    // Animasi pulse
+    postElement.classList.add('animate-pulse');
+    
+    // Hapus highlight setelah 5 detik
+    setTimeout(() => {
+        postElement.style.border = '';
+        postElement.style.backgroundColor = '';
+        postElement.classList.remove('animate-pulse');
+    }, 5000);
+}
+
+    async autoOpenCommentsIfNeeded(postId) {
+        // Cek jika notifikasi berasal dari komentar
+        const urlParams = new URLSearchParams(window.location.search);
+        const notificationType = urlParams.get('type');
+        
+        if (notificationType === 'comment') {
+            // Dapatkan data post untuk membuka modal komentar
+            try {
+                const postDoc = await db.collection('posts').doc(postId).get();
+                if (postDoc.exists) {
+                    const post = postDoc.data();
+                    const authorName = post.authorName || 'User';
+                    const authorJurusan = post.authorJurusan || '';
+                    const createdAt = post.createdAt;
+                    
+                    // Tunggu sebentar sebelum membuka modal
+                    setTimeout(() => {
+                        this.showPostComments(
+                            postId, 
+                            post.content, 
+                            authorName, 
+                            createdAt, 
+                            authorJurusan
+                        );
+                    }, 1000);
+                }
+            } catch (error) {
+                console.error('Error loading post for auto-comment:', error);
+            }
+        }
     }
 }
 

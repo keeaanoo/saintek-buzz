@@ -52,6 +52,7 @@
 
         .sidebar-item.active {
             font-weight: bold;
+            background-color: rgba(29, 240, 82, 0.1);
         }
 
         .sidebar-item i {
@@ -118,6 +119,7 @@
         .feed-container {
             border-left: 1px solid #eff3f4;
             border-right: 1px solid #eff3f4;
+        }
 
         /* Tambahkan di index.html style section */
         .post-image {
@@ -136,7 +138,6 @@
         #remove-image:hover {
             background-color: #ef4444;
         }
-        }
     </style>
 </head>
 <body class="bg-white">
@@ -147,8 +148,8 @@
             <div class="flex flex-col h-full p-4">
                 <!-- Logo -->
                 <div class="flex items-center space-x-2 p-3 mb-6">
-                    <i class="fas fa-bolt text-yellow-500 text-2xl"></i>
-                    <h1 class="text-xl font-bold text-gray-800">Saintek Buzz</h1>
+                    <img src="assets/Group 2.svg" class="w-8 h-8">
+                    <h1 class="text-xl font-bold text-green-700">Saintek Buzz</h1>
                 </div>
                 
                 <!-- Navigasi -->
@@ -160,6 +161,10 @@
                     <a href="#" class="sidebar-item" id="profile-link">
                         <i class="fas fa-user"></i>
                         <span>Profile</span>
+                    </a>
+                    <a href="notification.html" class="sidebar-item">
+                        <i class="fas fa-bell"></i>
+                        <span>Notification</span>
                     </a>
                     
                     <!-- Tombol Post (Hanya untuk user login) -->
@@ -297,7 +302,6 @@
                         <!-- Filter Semua Post -->
                         <div class="flex justify-between items-center p-3 rounded-xl cursor-pointer filter-hashtag active" data-hashtag="all">
                             <div class="flex items-center">
-                                <i class="fas fa-layer-group text-yellow-500 mr-3"></i>
                                 <span class="font-medium">All Posts</span>
                             </div>
                             <span id="all-posts-count" class="text-gray-500 text-sm">0</span>
@@ -349,7 +353,7 @@
                         Tips
                     </h3>
                     <p class="text-sm text-yellow-700">
-                        Use relevant hashtags to make your posts easier to find. Examples: #Event, #Information, #Campus
+                        Use relevant hashtags to make your posts easier to find. Examples: #Event, #Informasi, #Kampus
                     </p>
                 </div>
             </div>
@@ -444,6 +448,129 @@
                     userAvatarForm.innerHTML = '<i class="fas fa-user"></i>';
                 }
             };
+        });
+
+        // Update user info di sidebar
+        function updateSidebarUserInfo(user) {
+            const userAvatar = document.getElementById('user-avatar');
+            const userName = document.getElementById('user-name');
+            const userEmail = document.getElementById('user-email');
+            
+            if (userAvatar && user.displayName) {
+                // Cek apakah user punya avatar
+                db.collection('users').doc(user.uid).get()
+                    .then((doc) => {
+                        if (doc.exists) {
+                            const userData = doc.data();
+                            if (userData.avatarUrl) {
+                                userAvatar.innerHTML = `
+                                    <img src="${userData.avatarUrl}" 
+                                         alt="${user.displayName}" 
+                                         class="w-full h-full object-cover rounded-full">
+                                `;
+                            } else {
+                                userAvatar.textContent = user.displayName.charAt(0).toUpperCase();
+                            }
+                        } else {
+                            userAvatar.textContent = user.displayName.charAt(0).toUpperCase();
+                        }
+                    })
+                    .catch((error) => {
+                        console.error('Error loading user data:', error);
+                        userAvatar.textContent = user.displayName.charAt(0).toUpperCase();
+                    });
+            }
+            
+            if (userName && user.displayName) {
+                userName.textContent = user.displayName;
+            }
+            
+            if (userEmail && user.email) {
+                userEmail.textContent = `@${user.email.split('@')[0]}`;
+            }
+        }
+
+        function updateNotificationBadge() {
+            const user = auth.currentUser;
+            if (!user) return;
+            
+            // Subscribe ke notifikasi yang belum dibaca
+            db.collection('notifications')
+                .where('userId', '==', user.uid)
+                .where('read', '==', false)
+                .onSnapshot((snapshot) => {
+                    const unreadCount = snapshot.size;
+                    const badgeElements = document.querySelectorAll('#notification-badge');
+                    
+                    badgeElements.forEach(badge => {
+                        if (unreadCount > 0) {
+                            badge.classList.remove('hidden');
+                            badge.textContent = unreadCount > 9 ? '9+' : unreadCount;
+                        } else {
+                            badge.classList.add('hidden');
+                        }
+                    });
+                });
+        }
+
+
+        // Update di auth.onAuthStateChanged
+        auth.onAuthStateChanged((user) => {
+            if (user) {
+                // User sudah login
+                document.getElementById('login-btn').classList.add('hidden');
+                document.getElementById('logout-btn').classList.remove('hidden');
+                document.getElementById('post-form-container').classList.remove('hidden');
+                document.getElementById('profile-link').classList.remove('hidden');
+                
+                // Update sidebar user info dengan avatar
+                updateSidebarUserInfo(user);
+                updateNotificationBadge();
+                
+                // Update avatar di form
+                const userAvatarForm = document.getElementById('user-avatar-form');
+                if (userAvatarForm && user.displayName) {
+                    // Cek avatar
+                    db.collection('users').doc(user.uid).get()
+                        .then((doc) => {
+                            if (doc.exists) {
+                                const userData = doc.data();
+                                if (userData.avatarUrl) {
+                                    userAvatarForm.innerHTML = `
+                                        <img src="${userData.avatarUrl}" 
+                                             alt="${user.displayName}" 
+                                             class="w-full h-full object-cover rounded-full">
+                                    `;
+                                } else {
+                                    userAvatarForm.textContent = user.displayName.charAt(0).toUpperCase();
+                                }
+                            } else {
+                                userAvatarForm.textContent = user.displayName.charAt(0).toUpperCase();
+                            }
+                        })
+                        .catch((error) => {
+                            console.error('Error loading user data:', error);
+                            userAvatarForm.textContent = user.displayName.charAt(0).toUpperCase();
+                        });
+                }
+                
+                // Setup filter listeners terlebih dahulu
+                setupFilterListeners();
+                
+                // Load hashtag counts
+                loadHashtagCounts();
+                
+                // Load semua posts (default filter)
+                filterPostsByHashtag('all');
+                
+            } else {
+                // User belum login
+                document.getElementById('login-btn').classList.remove('hidden');
+                document.getElementById('logout-btn').classList.add('hidden');
+                document.getElementById('post-form-container').classList.add('hidden');
+                document.getElementById('profile-link').classList.add('hidden');
+                document.getElementById('posts-container').innerHTML = '<p class="text-center text-gray-500 py-8">Silakan login untuk melihat posts</p>';
+            }
         });
     </script>
 </body>

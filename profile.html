@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Profil - Saintek Buzz</title>
+    <title>Profile - Saintek Buzz</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/8.10.1/firebase-app.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/8.10.1/firebase-auth.min.js"></script>
@@ -23,6 +23,7 @@
         }
         .sidebar-item.active {
             font-weight: bold;
+            background-color: rgba(29, 240, 82, 0.1);
         }
         .sidebar-item i {
             width: 24px;
@@ -81,47 +82,176 @@
             from { opacity: 0; }
             to { opacity: 1; }
         }
-</style>
+        
+        /* Avatar styling */
+        #profile-avatar {
+            transition: all 0.3s ease;
+        }
+        
+        #profile-avatar:hover {
+            transform: scale(1.05);
+            cursor: pointer;
+        }
+        
+        /* Overlay for avatar upload */
+        .avatar-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .avatar-container:hover .avatar-overlay {
+            opacity: 1;
+        }
+        
+        /* Di profile.html atau style.css */
+        @keyframes highlight-pulse {
+            0%, 100% {
+                box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+            }
+            50% {
+                box-shadow: 0 0 0 10px rgba(16, 185, 129, 0);
+            }
+        }
+
+        .highlighted-post {
+            animation: highlight-pulse 2s ease-in-out infinite;
+            border: 2px solid #10b981 !important;
+            background-color: #f0fdf4 !important;
+        }
+
+        .animate-pulse {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.8;
+            }
+        }
+        
+        /* FIXED: Styling untuk sidebar yang benar */
+        .sidebar-container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh; /* Gunakan viewport height */
+            position: sticky;
+            top: 0;
+        }
+        
+        .sidebar-nav {
+            flex: 1;
+            overflow-y: auto;
+        }
+        
+        .sidebar-footer {
+            position: sticky;
+            bottom: 0;
+            background: white;
+            padding-top: 1rem;
+            border-top: 1px solid #e5e7eb;
+            margin-top: auto; /* Pushes to bottom */
+        }
+        
+        /* Perbaikan untuk avatar di sidebar */
+        .sidebar-user-info {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.75rem;
+            border-radius: 9999px;
+            transition: background-color 0.2s ease;
+            margin-bottom: 0.5rem;
+        }
+        
+        .sidebar-user-info:hover {
+            background-color: rgba(0, 0, 0, 0.05);
+        }
+        
+        /* Notification badge */
+        .notification-badge {
+            position: absolute;
+            top: -2px;
+            right: -2px;
+            background-color: #ef4444;
+            color: white;
+            font-size: 10px;
+            font-weight: bold;
+            border-radius: 50%;
+            min-width: 18px;
+            height: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 4px;
+        }
     </style>
 </head>
 <body class="bg-white">
     <!-- Main Container -->
     <div class="flex max-w-7xl mx-auto">
-        <!-- Sidebar Kiri - Navigasi -->
-        <div class="w-64 lg:w-80 border-r border-gray-200 min-h-screen sticky top-0">
-            <div class="flex flex-col h-full p-4">
-                <!-- Logo -->
-                <div class="flex items-center space-x-2 p-3 mb-6">
-                    <i class="fas fa-bolt text-yellow-500 text-2xl"></i>
-                    <h1 class="text-xl font-bold text-gray-800">Saintek Buzz</h1>
+        
+        <!-- Sidebar Kiri - Navigasi (DIPERBAIKI) -->
+        <div class="w-64 lg:w-80 border-r border-gray-200">
+            <!-- Container untuk sticky sidebar -->
+            <div class="sidebar-container sticky top-0 h-screen">
+                <div class="p-4">
+                    <!-- Logo -->
+                    <div class="flex items-center space-x-2 p-3 mb-6">
+                        <img src="assets/Group 2.svg" class="w-8 h-8">
+                        <h1 class="text-xl font-bold text-green-700">Saintek Buzz</h1>
+                    </div>
+                    
+                    <!-- Navigasi -->
+                    <nav class="sidebar-nav">
+                        <a href="index.html" class="sidebar-item">
+                            <i class="fas fa-home"></i>
+                            <span>Home</span>
+                        </a>
+                        <a href="profile.html" class="sidebar-item active">
+                            <i class="fas fa-user"></i>
+                            <span>Profile</span>
+                        </a>
+                        <a href="notification.html" class="sidebar-item relative">
+                            <i class="fas fa-bell"></i>
+                            <span>Notification</span>
+                            <span id="notification-badge" class="notification-badge hidden"></span>
+                        </a>
+                    </nav>
                 </div>
                 
-                <!-- Navigasi -->
-                <nav class="flex-grow">
-                    <a href="index.html" class="sidebar-item">
-                        <i class="fas fa-home"></i>
-                        <span>Home</span>
-                    </a>
-                    <a href="#" class="sidebar-item active">
-                        <i class="fas fa-user"></i>
-                        <span>Profile</span>
-                    </a>
-                </nav>
-                
-                <!-- User Info & Logout -->
-                <div class="mt-auto pt-4 border-t border-gray-200">
-                    <div class="flex items-center justify-between p-3 rounded-full hover:bg-gray-100">
+                <!-- User Info & Logout (DIPERBAIKI) -->
+                <div class="sidebar-footer p-4 border-t border-gray-200">
+                    <div class="sidebar-user-info" id="user-info-sidebar">
                         <div class="flex items-center">
                             <div class="w-10 h-10 bg-yellow-500 rounded-full flex items-center justify-center text-white font-bold mr-3" id="user-avatar">
                                 U
                             </div>
                             <div>
                                 <div class="font-bold text-sm" id="profile-sidebar-name">Username</div>
+                                <div class="text-gray-500 text-xs" id="profile-sidebar-email">@username</div>
                             </div>
                         </div>
-                        <button id="logout-btn" class="text-gray-500 hover:text-gray-700">
+                        <button id="logout-btn" class="text-gray-500 hover:text-red-500 transition-colors duration-200">
                             <i class="fas fa-sign-out-alt"></i>
                         </button>
+                    </div>
+                    
+                    <!-- Login option jika belum login -->
+                    <div id="login-sidebar" class="hidden">
+                        <a href="login.html" class="sidebar-item text-green-700">
+                            <i class="fas fa-sign-in-alt"></i>
+                            <span>Login</span>
+                        </a>
                     </div>
                 </div>
             </div>
@@ -153,8 +283,17 @@
                 <div class="px-6 pb-6 relative">
                     <div class="flex justify-between">
                         <div class="flex items-end -mt-20">
-                            <div class="w-40 h-40 avatar-gradient rounded-full flex items-center justify-center text-white text-5xl font-bold border-4 border-white shadow-lg">
-                                <span id="profile-initial">U</span>
+                            <!-- Avatar Container with Upload Functionality -->
+                            <div class="relative avatar-container">
+                                <div class="w-40 h-40 bg-gradient-to-r from-yellow-400 to-yellow-700 rounded-full flex items-center justify-center text-white text-5xl font-bold border-4 border-white shadow-lg" id="profile-avatar">
+                                    <span id="profile-initial">U</span>
+                                </div>
+                                <!-- Avatar Upload Overlay -->
+                                <div class="avatar-overlay" id="avatar-overlay">
+                                    <button id="change-avatar-btn" class="text-white text-sm font-medium bg-green-600 hover:bg-green-700 px-4 py-2 rounded-full transition duration-200">
+                                        <i class="fas fa-camera mr-2"></i>Ganti Foto
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -191,6 +330,9 @@
             </div>
         </div>
 
+        <!-- Hidden file input for avatar upload -->
+        <input type="file" id="avatar-upload-input" accept="image/*" class="hidden">
+
     <!-- Loading Overlay -->
     <div id="loading-overlay" class="fixed inset-0 bg-white bg-opacity-80 flex items-center justify-center z-50 hidden">
         <div class="text-center">
@@ -199,7 +341,78 @@
         </div>
     </div>
 
+    <!-- Avatar Upload Modal -->
+    <div id="avatar-upload-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-xl p-6 w-full max-w-md mx-4">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold text-gray-800">Ubah Foto Profil</h3>
+                <button id="close-avatar-modal" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times text-lg"></i>
+                </button>
+            </div>
+            
+            <!-- Avatar Preview -->
+            <div class="flex justify-center mb-6">
+                <div class="w-32 h-32 rounded-full overflow-hidden border-4 border-white shadow-lg" id="avatar-preview-container">
+                    <img id="avatar-preview" class="w-full h-full object-cover" src="" alt="Preview">
+                </div>
+            </div>
+            
+            <!-- Upload Options -->
+            <div class="space-y-3">
+                <label for="avatar-file-input" class="block w-full bg-green-600 hover:bg-green-700 text-white text-center py-3 px-4 rounded-lg cursor-pointer transition duration-200">
+                    <i class="fas fa-upload mr-2"></i>Pilih Foto dari Komputer
+                    <input type="file" id="avatar-file-input" accept="image/*" class="hidden">
+                </label>
+                
+                <div id="avatar-upload-status" class="text-sm text-center text-gray-600 mt-2 hidden">
+                    <i class="fas fa-spinner fa-spin mr-2"></i>
+                    <span id="avatar-status-text">Mengupload...</span>
+                </div>
+                
+                <div class="flex space-x-3 mt-4">
+                    <button id="cancel-avatar-btn" class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 py-2 px-4 rounded-lg transition duration-200">
+                        Batal
+                    </button>
+                    <button id="save-avatar-btn" class="flex-1 bg-green-700 hover:bg-green-800 text-white py-2 px-4 rounded-lg transition duration-200" disabled>
+                        Simpan
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="js/firebase.js"></script>
+    <script src="https://upload-widget.cloudinary.com/global/all.js" type="text/javascript"></script>
+    <script src="js/cloudinary.js"></script>
     <script src="js/profile.js"></script>
+    
+    <script>
+        // Setup notification badge
+        document.addEventListener('DOMContentLoaded', function() {
+            // Load notification badge count from localStorage
+            const badgeCount = localStorage.getItem('notificationBadgeCount') || 0;
+            const unreadCount = parseInt(badgeCount);
+            const badge = document.getElementById('notification-badge');
+            
+            if (badge && unreadCount > 0) {
+                badge.classList.remove('hidden');
+                badge.textContent = unreadCount > 9 ? '9+' : unreadCount;
+            }
+            
+            // Listen for notification updates
+            window.addEventListener('notificationUpdate', function(event) {
+                if (badge) {
+                    const unreadCount = event.detail?.count || 0;
+                    if (unreadCount > 0) {
+                        badge.classList.remove('hidden');
+                        badge.textContent = unreadCount > 9 ? '9+' : unreadCount;
+                    } else {
+                        badge.classList.add('hidden');
+                    }
+                }
+            });
+        });
+    </script>
 </body>
 </html>

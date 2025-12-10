@@ -1,9 +1,12 @@
 // Variabel global untuk state filter
 let currentFilter = 'all';
 
+// Cache untuk avatar user
+const avatarCache = {};
+
 // === FUNGSI UTAMA ===
 
-// Cek status login
+// Cek status login dan update UI dengan avatar
 auth.onAuthStateChanged((user) => {
     if (user) {
         // User sudah login
@@ -12,11 +15,11 @@ auth.onAuthStateChanged((user) => {
         document.getElementById('post-form-container').classList.remove('hidden');
         document.getElementById('profile-link').classList.remove('hidden');
         
-        // Tampilkan avatar user
-        const userAvatar = document.getElementById('user-avatar');
-        if (user.displayName) {
-            userAvatar.textContent = user.displayName.charAt(0).toUpperCase();
-        }
+        // Update sidebar user info dengan avatar
+        updateSidebarUserInfo(user);
+        
+        // Update avatar di form post
+        updatePostFormAvatar(user);
         
         // Setup filter listeners terlebih dahulu
         setupFilterListeners();
@@ -34,8 +37,114 @@ auth.onAuthStateChanged((user) => {
         document.getElementById('post-form-container').classList.add('hidden');
         document.getElementById('profile-link').classList.add('hidden');
         document.getElementById('posts-container').innerHTML = '<p class="text-center text-gray-500 py-8">Silakan login untuk melihat posts</p>';
+        
+        // Reset sidebar
+        const userInfoSidebar = document.getElementById('user-info-sidebar');
+        const loginSidebar = document.getElementById('login-sidebar');
+        if (userInfoSidebar) userInfoSidebar.classList.add('hidden');
+        if (loginSidebar) loginSidebar.classList.remove('hidden');
     }
 });
+
+// Fungsi untuk update sidebar user info dengan avatar
+function updateSidebarUserInfo(user) {
+    const userAvatar = document.getElementById('user-avatar');
+    const userName = document.getElementById('user-name');
+    const userInfoSidebar = document.getElementById('user-info-sidebar');
+    const loginSidebar = document.getElementById('login-sidebar');
+    
+    if (userInfoSidebar) {
+        userInfoSidebar.classList.remove('hidden');
+    }
+    if (loginSidebar) {
+        loginSidebar.classList.add('hidden');
+    }
+    
+    if (userAvatar && user.uid) {
+        // Coba dapatkan dari cache dulu
+        if (avatarCache[user.uid]) {
+            userAvatar.innerHTML = `
+                <img src="${avatarCache[user.uid]}" 
+                     alt="${user.displayName || 'User'}" 
+                     class="w-full h-full object-cover rounded-full">
+            `;
+        } else {
+            // Load dari Firestore
+            db.collection('users').doc(user.uid).get()
+                .then((doc) => {
+                    if (doc.exists) {
+                        const userData = doc.data();
+                        if (userData.avatarUrl) {
+                            // Tampilkan avatar
+                            userAvatar.innerHTML = `
+                                <img src="${userData.avatarUrl}" 
+                                     alt="${user.displayName || 'User'}" 
+                                     class="w-full h-full object-cover rounded-full">
+                            `;
+                            // Simpan di cache
+                            avatarCache[user.uid] = userData.avatarUrl;
+                        } else {
+                            // Tampilkan initial
+                            userAvatar.innerHTML = `<div class="w-10 h-10 bg-yellow-500 rounded-full flex items-center justify-center text-white font-bold">${user.displayName ? user.displayName.charAt(0).toUpperCase() : 'U'}</div>`;
+                        }
+                    } else {
+                        userAvatar.innerHTML = `<div class="w-10 h-10 bg-yellow-500 rounded-full flex items-center justify-center text-white font-bold">${user.displayName ? user.displayName.charAt(0).toUpperCase() : 'U'}</div>`;
+                    }
+                })
+                .catch((error) => {
+                    console.error('Error loading user data:', error);
+                    userAvatar.innerHTML = `<div class="w-10 h-10 bg-yellow-500 rounded-full flex items-center justify-center text-white font-bold">${user.displayName ? user.displayName.charAt(0).toUpperCase() : 'U'}</div>`;
+                });
+        }
+    }
+    
+    if (userName && user.displayName) {
+        userName.textContent = user.displayName;
+    }
+}
+
+// Fungsi untuk update avatar di form post
+function updatePostFormAvatar(user) {
+    const userAvatarForm = document.getElementById('user-avatar-form');
+    
+    if (userAvatarForm && user.uid) {
+        // Coba dapatkan dari cache dulu
+        if (avatarCache[user.uid]) {
+            userAvatarForm.innerHTML = `
+                <img src="${avatarCache[user.uid]}" 
+                     alt="${user.displayName || 'User'}" 
+                     class="w-full h-full object-cover rounded-full">
+            `;
+        } else {
+            // Load dari Firestore
+            db.collection('users').doc(user.uid).get()
+                .then((doc) => {
+                    if (doc.exists) {
+                        const userData = doc.data();
+                        if (userData.avatarUrl) {
+                            // Tampilkan avatar
+                            userAvatarForm.innerHTML = `
+                                <img src="${userData.avatarUrl}" 
+                                     alt="${user.displayName || 'User'}" 
+                                     class="w-full h-full object-cover rounded-full">
+                            `;
+                            // Simpan di cache
+                            avatarCache[user.uid] = userData.avatarUrl;
+                        } else {
+                            // Tampilkan initial
+                            userAvatarForm.innerHTML = `<div class="w-12 h-12 bg-yellow-500 rounded-full flex items-center justify-center text-white font-bold">${user.displayName ? user.displayName.charAt(0).toUpperCase() : 'U'}</div>`;
+                        }
+                    } else {
+                        userAvatarForm.innerHTML = `<div class="w-12 h-12 bg-yellow-500 rounded-full flex items-center justify-center text-white font-bold">${user.displayName ? user.displayName.charAt(0).toUpperCase() : 'U'}</div>`;
+                    }
+                })
+                .catch((error) => {
+                    console.error('Error loading user data for form:', error);
+                    userAvatarForm.innerHTML = `<div class="w-12 h-12 bg-yellow-500 rounded-full flex items-center justify-center text-white font-bold">${user.displayName ? user.displayName.charAt(0).toUpperCase() : 'U'}</div>`;
+                });
+        }
+    }
+}
 
 // === FUNGSI POST ===
 
@@ -80,9 +189,31 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
+    
+    // Setup logout button
+    const logoutBtn = document.getElementById('logout-btn');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', handleLogout);
+    }
+    
+    // Setup login button
+    const loginBtn = document.getElementById('login-btn');
+    if (loginBtn) {
+        loginBtn.addEventListener('click', () => {
+            window.location.href = 'login.html';
+        });
+    }
+    
+    // Setup profile link
+    const profileLink = document.getElementById('profile-link');
+    if (profileLink) {
+        profileLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            window.location.href = 'profile.html';
+        });
+    }
 });
 
-// Fungsi untuk membuat post baru
 // Fungsi untuk membuat post baru
 async function createPost() {
     const postContent = document.getElementById('post-content');
@@ -129,6 +260,24 @@ async function createPost() {
         // Ekstrak hashtag dari konten
         const hashtags = extractHashtags(content);
         
+        // Cari data user untuk mendapatkan jurusan dan avatar
+        let authorJurusan = '';
+        let authorAvatarUrl = null;
+        
+        if (!anonymous) {
+            const userDoc = await db.collection('users').doc(user.uid).get();
+            if (userDoc.exists) {
+                const userData = userDoc.data();
+                authorJurusan = userData.jurusan || '';
+                authorAvatarUrl = userData.avatarUrl || null;
+                
+                // Simpan avatar di cache jika ada
+                if (authorAvatarUrl) {
+                    avatarCache[user.uid] = authorAvatarUrl;
+                }
+            }
+        }
+        
         // Buat data post dasar
         const postData = {
             content: content,
@@ -140,17 +289,10 @@ async function createPost() {
             comments: [],
             createdAt: firebase.firestore.FieldValue.serverTimestamp(),
             imageUrl: imageUrl,
-            imagePublicId: imageUrl ? imageUrl.split('/').pop().split('.')[0] : null
+            imagePublicId: imageUrl ? imageUrl.split('/').pop().split('.')[0] : null,
+            authorJurusan: authorJurusan,
+            authorAvatarUrl: anonymous ? null : authorAvatarUrl // Simpan avatar URL di post
         };
-        
-        // Jika bukan anonymous, cari data jurusan user
-        if (!anonymous) {
-            const userDoc = await db.collection('users').doc(user.uid).get();
-            if (userDoc.exists) {
-                const userData = userDoc.data();
-                postData.authorJurusan = userData.jurusan || '';
-            }
-        }
         
         // Simpan post ke Firestore
         const docRef = await db.collection('posts').add(postData);
@@ -161,7 +303,9 @@ async function createPost() {
             postContent.value = '';
         }
         document.getElementById('char-count').textContent = '0/280';
-        document.getElementById('anonymous').checked = false;
+        if (document.getElementById('anonymous')) {
+            document.getElementById('anonymous').checked = false;
+        }
         
         // Reset image preview
         if (window.cloudinaryManager) {
@@ -179,7 +323,6 @@ async function createPost() {
         
     } catch (error) {
         console.error('Error membuat post: ', error);
-        alert('Terjadi kesalahan saat membuat post: ' + error.message);
         showNotification('Gagal membuat post: ' + error.message, 'error');
     } finally {
         // Enable tombol post kembali
@@ -286,14 +429,35 @@ function createPostElement(post, postId) {
     const postElement = document.createElement('div');
     postElement.className = 'bg-white rounded-xl shadow-sm p-4 mb-4 post-item';
     postElement.id = `post-${postId}`;
+    postElement.dataset.authorId = post.authorId;
     
     // Format waktu
     const timeAgo = formatTimeAgo(post.createdAt);
     
-    // Tampilkan avatar berdasarkan apakah post anonim atau tidak
-    const avatar = post.isAnonymous 
-        ? '<div class="w-10 h-10 bg-gray-400 rounded-full flex items-center justify-center text-white font-bold">A</div>'
-        : `<div class="w-10 h-10 bg-yellow-500 rounded-full flex items-center justify-center text-white font-bold">${post.authorName.charAt(0).toUpperCase()}</div>`;
+    // Cek jika post memiliki avatar URL yang disimpan
+    let avatarHtml = '';
+    if (post.isAnonymous) {
+        avatarHtml = '<div class="w-10 h-10 bg-gray-400 rounded-full flex items-center justify-center text-white font-bold">A</div>';
+    } else if (post.authorAvatarUrl) {
+        // Jika post sudah menyimpan avatar URL, gunakan itu
+        const fallbackInitial = post.authorName ? post.authorName.charAt(0).toUpperCase() : 'U';
+        avatarHtml = `
+            <div id="avatar-${postId}" class="w-10 h-10 rounded-full overflow-hidden">
+                <img src="${post.authorAvatarUrl}" 
+                     alt="${post.authorName || 'User'}" 
+                     class="w-full h-full object-cover"
+                     onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\\'w-10 h-10 rounded-full flex items-center justify-center text-white font-bold bg-yellow-500\\'>${fallbackInitial}</div>';">
+            </div>
+        `;
+    } else {
+        // Jika tidak ada avatar URL yang disimpan, buat placeholder dan load avatar
+        const fallbackInitial = post.authorName ? post.authorName.charAt(0).toUpperCase() : 'U';
+        avatarHtml = `
+            <div id="avatar-${postId}" class="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold bg-yellow-500">
+                ${fallbackInitial}
+            </div>
+        `;
+    }
     
     // Tampilkan nama author
     const authorName = post.isAnonymous ? 'Anonim' : post.authorName;
@@ -305,7 +469,7 @@ function createPostElement(post, postId) {
     
     // Tampilkan hashtag
     const hashtagsHtml = post.hashtags.map(tag => 
-        `<span class="text-green-700 border rounded-full px-2 bg-green-100 border-green-200 hover:underline cursor-pointer">#${tag}</span>`
+        `<span class="text-green-700 border rounded-full px-2 bg-green-100 border-green-200 hover:underline cursor-pointer hashtag-filter" data-hashtag="${tag}">#${tag}</span>`
     ).join(' ');
     
     // Cek apakah user sudah like post ini
@@ -320,7 +484,7 @@ function createPostElement(post, postId) {
     // Cek apakah user adalah author post (untuk tombol hapus)
     const isAuthor = user && post.authorId === user.uid;
     const deleteButton = isAuthor 
-        ? `<button class="text-red-500 hover:text-red-700 delete-post" data-postid="${postId}">
+        ? `<button class="text-red-500 hover:text-red-700 delete-post" data-postid="${postId}" title="Hapus post">
               <i class="fas fa-trash"></i>
            </button>` 
         : '';
@@ -341,7 +505,7 @@ function createPostElement(post, postId) {
     postElement.innerHTML = `
         <div class="flex space-x-3">
             <div class="flex-shrink-0">
-                ${avatar}
+                ${avatarHtml}
             </div>
             <div class="flex-grow">
                 <div class="flex justify-between items-start">
@@ -376,6 +540,11 @@ function createPostElement(post, postId) {
         </div>
     `;
     
+    // Load avatar jika bukan post anonim dan tidak ada avatar URL yang disimpan
+    if (!post.isAnonymous && post.authorId && !post.authorAvatarUrl) {
+        loadUserAvatar(post.authorId, postId, post.authorName);
+    }
+    
     // Tambahkan event listener untuk tombol like
     const likeBtn = postElement.querySelector('.like-btn');
     if (likeBtn) {
@@ -388,11 +557,9 @@ function createPostElement(post, postId) {
         commentBtn.addEventListener('click', (e) => {
             e.preventDefault();
             e.stopPropagation();
-            console.log('Comment button clicked for post:', postId);
             if (typeof window.openCommentModal === 'function') {
                 window.openCommentModal(postId);
             } else {
-                console.error('openCommentModal not available');
                 alert('Fitur komentar sedang tidak tersedia');
             }
         });
@@ -404,12 +571,64 @@ function createPostElement(post, postId) {
         deleteBtn.addEventListener('click', () => deletePost(postId));
     }
     
+    // Tambahkan event listener untuk hashtag filter
+    const hashtagElements = postElement.querySelectorAll('.hashtag-filter');
+    hashtagElements.forEach(element => {
+        element.addEventListener('click', (e) => {
+            const hashtag = e.target.dataset.hashtag;
+            filterPostsByHashtag(hashtag);
+        });
+    });
+    
     return postElement;
+}
+
+// Fungsi untuk memuat avatar user
+async function loadUserAvatar(userId, postId, userName) {
+    // Cek cache dulu
+    if (avatarCache[userId]) {
+        updateAvatarInPost(postId, avatarCache[userId], userName);
+        return;
+    }
+    
+    try {
+        const userDoc = await db.collection('users').doc(userId).get();
+        
+        if (userDoc.exists) {
+            const userData = userDoc.data();
+            if (userData.avatarUrl) {
+                // Simpan di cache
+                avatarCache[userId] = userData.avatarUrl;
+                updateAvatarInPost(postId, userData.avatarUrl, userName);
+                
+                // Update post di Firestore dengan avatar URL
+                db.collection('posts').doc(postId).update({
+                    authorAvatarUrl: userData.avatarUrl
+                }).catch(err => console.error('Error updating post with avatar:', err));
+            }
+        }
+    } catch (error) {
+        console.error('Error loading user avatar:', error);
+    }
+}
+
+// Fungsi untuk mengupdate avatar di post
+function updateAvatarInPost(postId, avatarUrl, userName) {
+    const avatarContainer = document.getElementById(`avatar-${postId}`);
+    if (avatarContainer) {
+        const fallbackInitial = userName ? userName.charAt(0).toUpperCase() : 'U';
+        avatarContainer.innerHTML = `
+            <img src="${avatarUrl}" 
+                 alt="${userName || 'User'}" 
+                 class="w-10 h-10 rounded-full object-cover"
+                 onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\\'w-10 h-10 rounded-full flex items-center justify-center text-white font-bold bg-yellow-500\\'>${fallbackInitial}</div>'">
+        `;
+    }
 }
 
 // Fungsi untuk memformat konten post (menyoroti hashtag)
 function formatPostContent(content) {
-    return content.replace(/#(\w+)/g, '<span class="text-green-600">#$1</span>');
+    return content.replace(/#(\w+)/g, '<span class="text-green-600 hashtag-inline">#$1</span>');
 }
 
 // Fungsi untuk memformat waktu
@@ -448,7 +667,6 @@ function formatTimeAgo(timestamp) {
 
 // === FUNGSI LIKE/UNLIKE ===
 
-// Versi terbaik dari toggleLike
 async function toggleLike(postId) {
     const user = auth.currentUser;
     
@@ -502,35 +720,47 @@ async function toggleLike(postId) {
             if (isLikedOnServer) {
                 // Unlike di server
                 const updatedLikes = likes.filter(uid => uid !== user.uid);
-                await postRef.update({ likes: updatedLikes });
+                await postRef.update({ 
+                    likes: updatedLikes,
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
             } else {
                 // Like di server
                 const updatedLikes = [...likes, user.uid];
-                await postRef.update({ likes: updatedLikes });
+                await postRef.update({ 
+                    likes: updatedLikes,
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                
+                // Buat notifikasi jika bukan like sendiri
+                if (post.authorId && post.authorId !== user.uid) {
+                    // Gunakan try-catch terpisah agar notifikasi error tidak mengganggu like
+                    try {
+                        const notificationResult = await createNotification({
+                            userId: post.authorId,
+                            type: 'like',
+                            postId: postId,
+                            postContent: post.content || ''
+                        });
+                        
+                        if (!notificationResult) {
+                            console.warn('Notification creation failed (but like succeeded)');
+                        }
+                    } catch (notifError) {
+                        console.error('Error in notification creation (non-blocking):', notifError);
+                    }
+                }
             }
         }
     } catch (error) {
         console.error('Error updating like on server:', error);
-        
-        // Rollback UI jika server error
-        if (likeBtn && likeIcon && likeCountSpan) {
-            // Kembalikan ke state sebelumnya
-            if (isCurrentlyLiked) {
-                likeIcon.className = 'fas fa-heart text-red-500 text-lg';
-                likeBtn.classList.add('text-red-500');
-                likeCountSpan.textContent = currentCount;
-            } else {
-                likeIcon.className = 'far fa-heart text-gray-500 text-lg';
-                likeBtn.classList.remove('text-red-500');
-                likeCountSpan.textContent = currentCount;
-            }
-            
-            alert('Terjadi kesalahan saat menyimpan like');
-        }
+        // ... (error handling UI) ...
     }
 }
 
 // === FUNGSI COMMENT MODAL === 
+
+// Di dalam fungsi openCommentModal di main.js
 
 function openCommentModal(postId) {
     console.log('Membuka modal komentar untuk post:', postId);
@@ -582,7 +812,7 @@ function openCommentModal(postId) {
 
     // Ambil data post dan komentar
     db.collection('posts').doc(postId).get()
-        .then((doc) => {
+        .then(async (doc) => {
             if (!doc.exists) {
                 throw new Error('Post tidak ditemukan');
             }
@@ -597,14 +827,82 @@ function openCommentModal(postId) {
                 return timeB - timeA;
             });
 
+            // Load avatar untuk setiap komentar
+            const commentsWithAvatars = await Promise.all(
+                comments.map(async (comment) => {
+                    let avatarUrl = null;
+                    if (comment.authorId) {
+                        try {
+                            const userDoc = await db.collection('users').doc(comment.authorId).get();
+                            if (userDoc.exists && userDoc.data().avatarUrl) {
+                                avatarUrl = userDoc.data().avatarUrl;
+                            }
+                        } catch (error) {
+                            console.error('Error loading avatar for comment:', error);
+                        }
+                    }
+                    return {
+                        ...comment,
+                        avatarUrl: avatarUrl
+                    };
+                })
+            );
+
+            // Load avatar untuk post author
+            let postAvatarUrl = null;
+            if (!post.isAnonymous && post.authorId) {
+                try {
+                    const userDoc = await db.collection('users').doc(post.authorId).get();
+                    if (userDoc.exists && userDoc.data().avatarUrl) {
+                        postAvatarUrl = userDoc.data().avatarUrl;
+                    }
+                } catch (error) {
+                    console.error('Error loading avatar for post:', error);
+                }
+            }
+
+            // Avatar untuk post
+            let postAvatarHtml = '';
+            if (post.isAnonymous) {
+                postAvatarHtml = '<div class="w-10 h-10 bg-gray-400 rounded-full flex items-center justify-center text-white font-bold">A</div>';
+            } else if (postAvatarUrl) {
+                const fallbackInitial = post.authorName ? post.authorName.charAt(0).toUpperCase() : 'U';
+                postAvatarHtml = `
+                    <img src="${postAvatarUrl}" 
+                         alt="${post.authorName || 'User'}" 
+                         class="w-10 h-10 rounded-full object-cover"
+                         onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\\'w-10 h-10 bg-yellow-500 rounded-full flex items-center justify-center text-white font-bold\\'>${fallbackInitial}</div>'">
+                `;
+            } else {
+                const fallbackInitial = post.authorName ? post.authorName.charAt(0).toUpperCase() : 'U';
+                postAvatarHtml = `<div class="w-10 h-10 bg-yellow-500 rounded-full flex items-center justify-center text-white font-bold">${fallbackInitial}</div>`;
+            }
+
+            // Avatar untuk user yang sedang login
+            let currentUserAvatarHtml = '';
+            if (user.uid && avatarCache[user.uid]) {
+                const fallbackInitial = user.displayName ? user.displayName.charAt(0).toUpperCase() : 'U';
+                currentUserAvatarHtml = `
+                    <img src="${avatarCache[user.uid]}" 
+                         alt="${user.displayName || 'User'}" 
+                         class="w-8 h-8 rounded-full object-cover"
+                         onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\\'w-8 h-8 bg-green-500 rounded-full flex items-center justify-center text-white text-sm font-bold\\'>${fallbackInitial}</div>'">
+                `;
+            } else {
+                const fallbackInitial = user.displayName ? user.displayName.charAt(0).toUpperCase() : 'U';
+                currentUserAvatarHtml = `
+                    <div class="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center text-white text-sm font-bold">
+                        ${fallbackInitial}
+                    </div>
+                `;
+            }
+
             modalContent.innerHTML = `
                 <!-- Header Post -->
                 <div class="mb-6 border-b pb-4">
                     <div class="flex space-x-3">
                         <div class="flex-shrink-0">
-                            <div class="w-10 h-10 ${post.isAnonymous ? 'bg-gray-400' : 'bg-yellow-500'} rounded-full flex items-center justify-center text-white font-bold">
-                                ${post.isAnonymous ? 'A' : (post.authorName ? post.authorName.charAt(0).toUpperCase() : 'U')}
-                            </div>
+                            ${postAvatarHtml}
                         </div>
                         <div class="flex-grow">
                             <div class="flex justify-between items-start">
@@ -628,23 +926,42 @@ function openCommentModal(postId) {
                     </h4>
                     
                     <div id="comments-list" class="space-y-4 mb-4 max-h-96 overflow-y-auto">
-                        ${comments.length > 0 ? 
-                            comments.map(comment => `
-                                <div class="flex space-x-3">
-                                    <div class="flex-shrink-0">
+                        ${commentsWithAvatars.length > 0 ? 
+                            commentsWithAvatars.map(comment => {
+                                const commentTime = formatTimeAgo(comment.createdAt);
+                                const fallbackInitial = comment.authorName ? comment.authorName.charAt(0).toUpperCase() : 'U';
+                                
+                                let commentAvatarHtml = '';
+                                if (comment.avatarUrl) {
+                                    commentAvatarHtml = `
+                                        <img src="${comment.avatarUrl}" 
+                                             alt="${comment.authorName || 'User'}" 
+                                             class="w-8 h-8 rounded-full object-cover"
+                                             onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\\'w-8 h-8 bg-green-500 rounded-full flex items-center justify-center text-white text-sm font-bold\\'>${fallbackInitial}</div>'">
+                                    `;
+                                } else {
+                                    commentAvatarHtml = `
                                         <div class="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center text-white text-sm font-bold">
-                                            ${comment.authorName ? comment.authorName.charAt(0).toUpperCase() : 'U'}
+                                            ${fallbackInitial}
+                                        </div>
+                                    `;
+                                }
+                                
+                                return `
+                                    <div class="flex space-x-3">
+                                        <div class="flex-shrink-0">
+                                            ${commentAvatarHtml}
+                                        </div>
+                                        <div class="flex-grow">
+                                            <div class="flex justify-between items-start">
+                                                <span class="font-semibold text-gray-800">${comment.authorName || 'User'}</span>
+                                                <span class="text-gray-500 text-xs">${comment.createdAt ? formatTimeAgo(comment.createdAt) : 'Baru saja'}</span>
+                                            </div>
+                                            <p class="text-gray-700 mt-1 text-sm">${comment.content || ''}</p>
                                         </div>
                                     </div>
-                                    <div class="flex-grow">
-                                        <div class="flex justify-between items-start">
-                                            <span class="font-semibold text-gray-800">${comment.authorName || 'User'}</span>
-                                            <span class="text-gray-500 text-xs">${comment.createdAt ? formatTimeAgo(comment.createdAt) : 'Baru saja'}</span>
-                                        </div>
-                                        <p class="text-gray-700 mt-1 text-sm">${comment.content || ''}</p>
-                                    </div>
-                                </div>
-                            `).join('') : 
+                                `;
+                            }).join('') : 
                             '<div class="text-center py-8 text-gray-500">Belum ada komentar. Jadilah yang pertama berkomentar!</div>'
                         }
                     </div>
@@ -654,9 +971,7 @@ function openCommentModal(postId) {
                 <div class="border-t pt-4">
                     <div class="flex space-x-3">
                         <div class="flex-shrink-0">
-                            <div class="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center text-white text-sm font-bold">
-                                ${user.displayName ? user.displayName.charAt(0).toUpperCase() : 'U'}
-                            </div>
+                            ${currentUserAvatarHtml}
                         </div>
                         <div class="flex-grow">
                             <textarea 
@@ -698,6 +1013,7 @@ function openCommentModal(postId) {
             if (submitButton) {
                 submitButton.onclick = () => addComment(postId);
             }
+
         })
         .catch((error) => {
             console.error('Error loading comments:', error);
@@ -742,7 +1058,7 @@ function addComment(postId) {
     submitButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Mengirim...';
 
     // Dapatkan post terlebih dahulu
-    db.collection('posts').doc(postId).get()
+     db.collection('posts').doc(postId).get()
         .then((doc) => {
             if (!doc.exists) {
                 throw new Error('Post tidak ditemukan');
@@ -751,44 +1067,39 @@ function addComment(postId) {
             const post = doc.data();
             const currentComments = Array.isArray(post.comments) ? post.comments : [];
             
-            // Buat objek komentar baru
             const newComment = {
                 content: content,
                 authorId: user.uid,
                 authorName: user.displayName || 'User',
-                createdAt: new Date()
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
             };
-            
-            console.log('Menambah komentar:', newComment);
             
             // Update post dengan komentar baru
             return db.collection('posts').doc(postId).update({
-                comments: [...currentComments, newComment]
+                comments: [...currentComments, newComment],
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            }).then(async () => {
+                // Buat notifikasi jika bukan komentar sendiri
+                if (post.authorId && post.authorId !== user.uid) {
+                    try {
+                        await createNotification({
+                            userId: post.authorId,
+                            type: 'comment',
+                            postId: postId,
+                            postContent: post.content || ''
+                        });
+                    } catch (notifError) {
+                        console.error('Error creating comment notification:', notifError);
+                    }
+                }
             });
         })
         .then(() => {
-            console.log('Komentar berhasil ditambahkan');
-            
-            // Reset input
-            commentInput.value = '';
-            
-            // Tampilkan pesan sukses
-            alert('Komentar berhasil ditambahkan!');
-            
-            // Muat ulang modal komentar untuk menampilkan komentar baru
-            openCommentModal(postId);
-            
-            // Muat ulang posts di halaman utama untuk update count
-            loadPosts();
+            // ... (success handling) ...
         })
         .catch((error) => {
             console.error('Error menambah komentar:', error);
-            alert('Terjadi kesalahan saat menambah komentar: ' + error.message);
-        })
-        .finally(() => {
-            // Enable button kembali
-            submitButton.disabled = false;
-            submitButton.innerHTML = originalText;
+            // ... (error handling) ...
         });
 }
 
@@ -806,17 +1117,31 @@ function deletePost(postId) {
             if (postElement) {
                 postElement.remove();
             }
+            showNotification('Post berhasil dihapus', 'success');
+            
+            // Update hashtag counts
+            loadHashtagCounts();
         })
         .catch((error) => {
             console.error('Error menghapus post: ', error);
-            alert('Terjadi kesalahan saat menghapus post');
+            showNotification('Terjadi kesalahan saat menghapus post', 'error');
         });
+}
+
+async function handleLogout() {
+    try {
+        await auth.signOut();
+        window.location.href = 'index.html';
+    } catch (error) {
+        console.error('Logout error:', error);
+        showNotification('Terjadi kesalahan saat logout: ' + error.message, 'error');
+    }
 }
 
 // === FUNGSI FILTER ===
 
 function setupFilterListeners() {
-    // Event listener untuk filter hashtag
+    // Event listener untuk filter hashtag di sidebar
     document.querySelectorAll('.filter-hashtag').forEach(element => {
         element.addEventListener('click', () => {
             const hashtag = element.getAttribute('data-hashtag');
@@ -836,6 +1161,8 @@ function setupFilterListeners() {
 function filterPostsByHashtag(hashtag) {
     currentFilter = hashtag;
     const postsContainer = document.getElementById('posts-container');
+    
+    if (!postsContainer) return;
     
     // Tampilkan loading
     postsContainer.innerHTML = '<div class="text-center py-8"><i class="fas fa-spinner fa-spin text-green-500 text-2xl"></i></div>';
@@ -954,7 +1281,7 @@ function loadHashtagCounts() {
     });
 }
 
-// Di main.js tambahkan:
+// Fungsi untuk membuka modal gambar
 function openImageModal(imageUrl) {
     const modal = document.createElement('div');
     modal.className = 'fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50';
@@ -971,10 +1298,252 @@ function openImageModal(imageUrl) {
             modal.remove();
         }
     };
+    
+    // Close with ESC key
+    const handleEscKey = (e) => {
+        if (e.key === 'Escape') {
+            modal.remove();
+            document.removeEventListener('keydown', handleEscKey);
+        }
+    };
+    document.addEventListener('keydown', handleEscKey);
+    
     document.body.appendChild(modal);
 }
 
+// Fungsi untuk membersihkan cache avatar
+function clearAvatarCache() {
+    for (const key in avatarCache) {
+        delete avatarCache[key];
+    }
+}
 
+// === FUNGSI NOTIFIKASI ===
+
+// Fungsi untuk membuat notifikasi (sudah ada di notification.js, tapi diulang di sini untuk akses mudah)
+async function createNotification(notificationData) {
+    try {
+        const user = auth.currentUser;
+        if (!user) return;
+
+        // Jangan buat notifikasi jika user memberi like/comment pada post sendiri
+        if (notificationData.userId === user.uid) {
+            return;
+        }
+
+        // Cek apakah notifikasi sudah ada (untuk menghindari duplikat)
+        const existingNotification = await db.collection('notifications')
+            .where('userId', '==', notificationData.userId)
+            .where('type', '==', notificationData.type)
+            .where('postId', '==', notificationData.postId)
+            .where('actorId', '==', user.uid)
+            .limit(1)
+            .get();
+
+        if (!existingNotification.empty) {
+            console.log('Notification already exists');
+            return;
+        }
+
+        const notification = {
+            userId: notificationData.userId,
+            type: notificationData.type, // 'like' atau 'comment'
+            actorId: user.uid,
+            actorName: user.displayName || 'User',
+            postId: notificationData.postId || null,
+            postContent: notificationData.postContent || null,
+            read: false,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+
+        await db.collection('notifications').add(notification);
+        console.log('Notification created:', notification);
+
+    } catch (error) {
+        console.error('Error creating notification:', error);
+    }
+}
+
+// Update fungsi toggleLike untuk membuat notifikasi
+async function toggleLike(postId) {
+    const user = auth.currentUser;
+    
+    if (!user) {
+        alert('Silakan login untuk like post');
+        return;
+    }
+    
+    // Update UI terlebih dahulu untuk responsif
+    const postElement = document.getElementById(`post-${postId}`);
+    const likeBtn = postElement?.querySelector('.like-btn');
+    const likeIcon = postElement?.querySelector('.like-btn i');
+    const likeCountSpan = postElement?.querySelector('.like-btn span');
+    
+    if (likeBtn && likeIcon && likeCountSpan) {
+        // Dapatkan state saat ini dari UI
+        const isCurrentlyLiked = likeIcon.classList.contains('fa-heart') && 
+                                !likeIcon.classList.contains('far');
+        const currentCount = parseInt(likeCountSpan.textContent) || 0;
+        
+        // Update UI lokal terlebih dahulu
+        if (isCurrentlyLiked) {
+            // Unlike
+            likeIcon.className = 'far fa-heart text-gray-500 text-lg';
+            likeBtn.classList.remove('text-red-500');
+            likeCountSpan.textContent = Math.max(0, currentCount - 1);
+        } else {
+            // Like
+            likeIcon.className = 'fas fa-heart text-red-500 text-lg';
+            likeBtn.classList.add('text-red-500');
+            likeCountSpan.textContent = currentCount + 1;
+        }
+        
+        // Tambah animasi
+        likeBtn.style.transform = 'scale(1.2)';
+        setTimeout(() => {
+            likeBtn.style.transform = 'scale(1)';
+        }, 200);
+    }
+    
+    // Kemudian update ke server
+    try {
+        const postRef = db.collection('posts').doc(postId);
+        const doc = await postRef.get();
+        
+        if (doc.exists) {
+            const post = doc.data();
+            const likes = post.likes || [];
+            const isLikedOnServer = likes.includes(user.uid);
+            
+            if (isLikedOnServer) {
+                // Unlike di server
+                const updatedLikes = likes.filter(uid => uid !== user.uid);
+                await postRef.update({ likes: updatedLikes });
+            } else {
+                // Like di server
+                const updatedLikes = [...likes, user.uid];
+                await postRef.update({ likes: updatedLikes });
+                
+                // Buat notifikasi jika bukan like sendiri
+                if (post.authorId !== user.uid) {
+                    await createNotification({
+                        userId: post.authorId,
+                        type: 'like',
+                        postId: postId,
+                        postContent: post.content
+                    });
+                }
+            }
+        }
+    } catch (error) {
+        console.error('Error updating like on server:', error);
+        
+        // Rollback UI jika server error
+        if (likeBtn && likeIcon && likeCountSpan) {
+            // Kembalikan ke state sebelumnya
+            if (isCurrentlyLiked) {
+                likeIcon.className = 'fas fa-heart text-red-500 text-lg';
+                likeBtn.classList.add('text-red-500');
+                likeCountSpan.textContent = currentCount;
+            } else {
+                likeIcon.className = 'far fa-heart text-gray-500 text-lg';
+                likeBtn.classList.remove('text-red-500');
+                likeCountSpan.textContent = currentCount;
+            }
+            
+            showNotification('Terjadi kesalahan saat menyimpan like', 'error');
+        }
+    }
+}
+
+// Update fungsi addComment untuk membuat notifikasi
+function addComment(postId) {
+    const user = auth.currentUser;
+    const commentInput = document.getElementById('comment-input');
+    
+    if (!user) {
+        alert('Silakan login untuk menambah komentar');
+        return;
+    }
+
+    if (!commentInput) {
+        console.error('Comment input not found');
+        return;
+    }
+
+    const content = commentInput.value.trim();
+
+    if (!content) {
+        alert('Komentar tidak boleh kosong');
+        return;
+    }
+
+    // Disable button selama proses
+    const submitButton = document.getElementById('submit-comment');
+    const originalText = submitButton.innerHTML;
+    submitButton.disabled = true;
+    submitButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Mengirim...';
+
+    // Dapatkan post terlebih dahulu
+    db.collection('posts').doc(postId).get()
+        .then((doc) => {
+            if (!doc.exists) {
+                throw new Error('Post tidak ditemukan');
+            }
+            
+            const post = doc.data();
+            const currentComments = Array.isArray(post.comments) ? post.comments : [];
+            
+            // Buat objek komentar baru
+            const newComment = {
+                content: content,
+                authorId: user.uid,
+                authorName: user.displayName || 'User',
+                createdAt: new Date()
+            };
+            
+            console.log('Menambah komentar:', newComment);
+            
+            // Update post dengan komentar baru
+            return db.collection('posts').doc(postId).update({
+                comments: [...currentComments, newComment]
+            }).then(() => {
+                // Buat notifikasi jika bukan komentar sendiri
+                if (post.authorId !== user.uid) {
+                    return createNotification({
+                        userId: post.authorId,
+                        type: 'comment',
+                        postId: postId,
+                        postContent: post.content
+                    });
+                }
+            });
+        })
+        .then(() => {
+            console.log('Komentar berhasil ditambahkan');
+            
+            // Reset input
+            commentInput.value = '';
+            
+            // Tampilkan pesan sukses
+            showNotification('Komentar berhasil ditambahkan!', 'success');
+            
+            // Muat ulang modal komentar untuk menampilkan komentar baru
+            openCommentModal(postId);
+            
+            // Muat ulang posts di halaman utama untuk update count
+            loadPosts();
+        })
+        .catch((error) => {
+            console.error('Error menambah komentar:', error);
+            showNotification('Terjadi kesalahan saat menambah komentar: ' + error.message, 'error');
+        })
+        .finally(() => {
+            // Enable button kembali
+            submitButton.disabled = false;
+            submitButton.innerHTML = originalText;
+        });
+}
 
 // === EXPORT FUNGSI KE GLOBAL SCOPE ===
 window.openCommentModal = openCommentModal;
@@ -982,3 +1551,4 @@ window.addComment = addComment;
 window.formatTimeAgo = formatTimeAgo;
 window.filterPostsByHashtag = filterPostsByHashtag;
 window.openImageModal = openImageModal;
+window.handleLogout = handleLogout;
